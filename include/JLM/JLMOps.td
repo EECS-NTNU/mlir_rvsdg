@@ -116,7 +116,7 @@ def JLM_Undef: JLM_Op<"undef"> {
     }];
 
     let results = (outs
-        AnyTypeOf<[RVSDG_Ctrl]>:$output
+        AnyType:$output
     );
 
     let assemblyFormat = "attr-dict `:` type($output)";
