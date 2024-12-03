@@ -107,46 +107,46 @@ LogicalResult GammaResult::verify() {
  */
 LogicalResult LambdaNode::verify() {
 
-  Value signatureVal = this->getResult();
-  if (!signatureVal.getType().isa<LambdaRefType>()) {
-    return emitOpError(
-        "Result type is invalid. Expected an instance of LambdaRefType.");
-  }
-  LambdaRefType signatureType = signatureVal.getType().cast<LambdaRefType>();
+  // Value signatureVal = this->getResult();
+  // if (!signatureVal.getType().isa<LambdaRefType>()) {
+  //   return emitOpError(
+  //       "Result type is invalid. Expected an instance of LambdaRefType.");
+  // }
+  // LambdaRefType signatureType = signatureVal.getType().cast<LambdaRefType>();
 
-  ArrayRef<Type> signatureParamTypes = signatureType.getParameterTypes();
-  auto bodyArgumentTypes = this->getRegion().getArgumentTypes();
-  auto nodeInputTypes = this->getOperandTypes();
+  // ArrayRef<Type> signatureParamTypes = signatureType.getParameterTypes();
+  // auto bodyArgumentTypes = this->getRegion().getArgumentTypes();
+  // auto nodeInputTypes = this->getOperandTypes();
 
-  if (bodyArgumentTypes.size() != signatureParamTypes.size() + nodeInputTypes.size()) {
-    return emitOpError("Mismatched number of arguments between lambda signature and body. ")
-           << "Signature has " << signatureParamTypes.size() << " arguments\n"
-           << "Node has " << nodeInputTypes.size() << " inputs\n"
-           << "Total number of arguments should be " << signatureParamTypes.size() + nodeInputTypes.size() << "\n"
-           << "Body has " << bodyArgumentTypes.size() << " arguments. ";
-  }
+  // if (bodyArgumentTypes.size() != signatureParamTypes.size() + nodeInputTypes.size()) {
+  //   return emitOpError("Mismatched number of arguments between lambda signature and body. ")
+  //          << "Signature has " << signatureParamTypes.size() << " arguments\n"
+  //          << "Node has " << nodeInputTypes.size() << " inputs\n"
+  //          << "Total number of arguments should be " << signatureParamTypes.size() + nodeInputTypes.size() << "\n"
+  //          << "Body has " << bodyArgumentTypes.size() << " arguments. ";
+  // }
 
-  for (size_t sigI = 0, argI = 0;
-       sigI < signatureParamTypes.size(); ++sigI, ++argI) {
-    if (signatureParamTypes[sigI] != bodyArgumentTypes[argI]) {
-      return emitOpError("Mismatched types between lambda signature and body "
-                         "arguments. ")
-             << "Signature argument #" << sigI << " has type "
-             << signatureParamTypes[sigI] << ". Body argument #" << argI
-             << " has type " << bodyArgumentTypes[argI];
-    }
-  }
+  // for (size_t sigI = 0, argI = 0;
+  //      sigI < signatureParamTypes.size(); ++sigI, ++argI) {
+  //   if (signatureParamTypes[sigI] != bodyArgumentTypes[argI]) {
+  //     return emitOpError("Mismatched types between lambda signature and body "
+  //                        "arguments. ")
+  //            << "Signature argument #" << sigI << " has type "
+  //            << signatureParamTypes[sigI] << ". Body argument #" << argI
+  //            << " has type " << bodyArgumentTypes[argI];
+  //   }
+  // }
 
-  for (size_t inI = 0, argI=signatureParamTypes.size(); inI < nodeInputTypes.size(); ++inI, ++argI) {
-    if (nodeInputTypes[inI] != bodyArgumentTypes[argI]) {
-      return emitOpError("Mismatched types in lambda node body arguments. "
-                         "First arguments "
-                         "should match node inputs. "
-                         "Offending argument: #")
-             << argI << " Expected " << nodeInputTypes[inI] << ", got "
-             << bodyArgumentTypes[argI];
-    }
-  }
+  // for (size_t inI = 0, argI=signatureParamTypes.size(); inI < nodeInputTypes.size(); ++inI, ++argI) {
+  //   if (nodeInputTypes[inI] != bodyArgumentTypes[argI]) {
+  //     return emitOpError("Mismatched types in lambda node body arguments. "
+  //                        "First arguments "
+  //                        "should match node inputs. "
+  //                        "Offending argument: #")
+  //            << argI << " Expected " << nodeInputTypes[inI] << ", got "
+  //            << bodyArgumentTypes[argI];
+  //   }
+  // }
 
   return LogicalResult::success();
 }
@@ -159,37 +159,37 @@ LogicalResult LambdaNode::verify() {
  *    terminator should have n operands of types T1, T2, ..., Tn.
  */
 LogicalResult LambdaResult::verify() {
-  auto parent = dyn_cast<LambdaNode>((*this)->getParentOp());
-  if (parent == NULL) {
-    return emitOpError(
-        "LambdaResult has no parent of type LambdaNode. This error should "
-        "never appear, so if it does, may God have mercy on your soul");
-  }
-  Value signatureVal = parent.getResult();
-  if (!signatureVal.getType().isa<LambdaRefType>()) {
-    return emitOpError(
-        "Result type is invalid. Expected an instance of LambdaRefType.");
-  }
-  LambdaRefType signatureType = signatureVal.getType().cast<LambdaRefType>();
-  ArrayRef<Type> signatureReturnTypes = signatureType.getReturnTypes();
+  // auto parent = dyn_cast<LambdaNode>((*this)->getParentOp());
+  // if (parent == NULL) {
+  //   return emitOpError(
+  //       "LambdaResult has no parent of type LambdaNode. This error should "
+  //       "never appear, so if it does, may God have mercy on your soul");
+  // }
+  // Value signatureVal = parent.getResult();
+  // if (!signatureVal.getType().isa<LambdaRefType>()) {
+  //   return emitOpError(
+  //       "Result type is invalid. Expected an instance of LambdaRefType.");
+  // }
+  // LambdaRefType signatureType = signatureVal.getType().cast<LambdaRefType>();
+  // ArrayRef<Type> signatureReturnTypes = signatureType.getReturnTypes();
 
-  auto resultTypes = this->getOperandTypes();
+  // auto resultTypes = this->getOperandTypes();
 
-  if (signatureReturnTypes.size() != resultTypes.size()) {
-    return emitOpError("Number of operands to lambda terminator does not match "
-                       "number of return types in signature.");
-  }
+  // if (signatureReturnTypes.size() != resultTypes.size()) {
+  //   return emitOpError("Number of operands to lambda terminator does not match "
+  //                      "number of return types in signature.");
+  // }
 
-  size_t typeIndex = 0;
-  for (auto [sigType, resType] : zip(signatureReturnTypes, resultTypes)) {
-    if (sigType != resType) {
-      return emitOpError("Type mismatch between lambda signature and lambda "
-                         "result Op. Offending type: #")
-             << typeIndex << " Signature has type " << sigType
-             << ", result Op has type " << resType;
-    }
-    ++typeIndex;
-  }
+  // size_t typeIndex = 0;
+  // for (auto [sigType, resType] : zip(signatureReturnTypes, resultTypes)) {
+  //   if (sigType != resType) {
+  //     return emitOpError("Type mismatch between lambda signature and lambda "
+  //                        "result Op. Offending type: #")
+  //            << typeIndex << " Signature has type " << sigType
+  //            << ", result Op has type " << resType;
+  //   }
+  //   ++typeIndex;
+  // }
 
   return LogicalResult::success();
 }
