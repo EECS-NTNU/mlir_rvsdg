@@ -151,26 +151,26 @@ def RVSDG_LambdaResult: RVSDG_Op<"lambdaResult", [
     let hasVerifier = 1;
 }
 
-def RVSDG_ApplyNode: RVSDG_Op<"applyNode", [DeclareOpInterfaceMethods<CallOpInterface>]>{
-    let summary = "RVSDG apply node. Used to call lambda nodes";
-    let description = [{
-        RVSDG apply node. Takes a reference to the lambda node to be called as its first input
-        followed by the arguments for the lambda. Outputs the results of applying the lambda node.
-    }];
+// def RVSDG_ApplyNode: RVSDG_Op<"applyNode", [DeclareOpInterfaceMethods<CallOpInterface>]>{
+//     let summary = "RVSDG apply node. Used to call lambda nodes";
+//     let description = [{
+//         RVSDG apply node. Takes a reference to the lambda node to be called as its first input
+//         followed by the arguments for the lambda. Outputs the results of applying the lambda node.
+//     }];
 
-    let arguments = (ins
-        RVSDG_LambdaRef: $lambda,
-        Variadic<AnyType>: $parameters
-    );
+//     let arguments = (ins
+//         RVSDG_LambdaRef: $lambda,
+//         Variadic<AnyType>: $parameters
+//     );
 
-    let results = (outs
-        Variadic<AnyType>: $results
-    );
+//     let results = (outs
+//         Variadic<AnyType>: $results
+//     );
 
-    let assemblyFormat = "attr-dict $lambda `:` type($lambda) custom<TypedParamList>($parameters, type($parameters)) (`->` type($results)^)?";
+//     let assemblyFormat = "attr-dict $lambda `:` type($lambda) custom<TypedParamList>($parameters, type($parameters)) (`->` type($results)^)?";
 
-    let hasVerifier = 1;
-}
+//     let hasVerifier = 1;
+// }
 
 /*
 *  Theta Node
