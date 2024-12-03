@@ -148,3 +148,20 @@ def JLM_Undef: JLM_Op<"undef"> {
 
     let assemblyFormat = "attr-dict `:` type($output)";
 }
+
+def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> { // Types must be verified
+    let summary = "Constant data array operation";
+    let description = [{
+        Constant data array operation.
+    }];
+
+    let arguments = (ins
+        Variadic<AnyType>:$input
+    );
+
+    let results = (outs
+        LLVMArrayType:$output
+    );
+
+    // let assemblyFormat = "attr-dict `:` type($output)";
+}
