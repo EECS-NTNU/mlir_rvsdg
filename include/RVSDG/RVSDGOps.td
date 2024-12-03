@@ -288,7 +288,11 @@ def RVSDG_DeltaNode: RVSDG_StructuralNode<"deltaNode", [Pure]>{
     }];
 
     let arguments = (ins
-        Variadic<AnyType>:$inputs
+        Variadic<AnyType>:$inputs, 
+        StrAttr:$name,
+        StrAttr:$linkage,
+        StrAttr:$section,
+        BoolAttr:$constant
     );
 
     let results = (outs
