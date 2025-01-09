@@ -496,10 +496,6 @@ LogicalResult DeltaResult::verify() {
   if (auto rvsdgPtrType = outputType.dyn_cast_or_null<RVSDGPointerType>()) {
     outputElementType = rvsdgPtrType.getElementType();
   }
-// All pointers are opaque in LLVM 18 so this check does not make sense
-//  else if (auto llvmPtrType = outputType.dyn_cast_or_null<mlir::LLVM::LLVMPointerType>()) {
-//    outputElementType = llvmPtrType.getElementType();
-//  }
   if (resultType != outputElementType) {
     return emitOpError("Type mismatch between DeltaResult and DeltaNode output.")
            << " DeltaResult type: " << resultType
