@@ -11,6 +11,7 @@
 #include "RVSDG/RVSDGASMDirectives.h"
 
 #include <iostream>
+#include <unordered_map>
 
 using namespace mlir;
 using namespace rvsdg;
