@@ -14,10 +14,10 @@ MLIR dialect libraries for using the Regional Value State Dependence Graph (RVSD
     - The tool can be found under `rvsdg-lsp-server`
 
 ## Software dependencies
- - LLVM 16.0.0
- - MLIR 16.0.0
+ - LLVM 18.0.0
+ - MLIR 18.0.0
  ### For building
- - Clang 16 
+ - Clang 18 
     - or another c++ compiler with support for `#pragma once` and C++17
  - CMake >= 3.13.4
  - Ninja-build
@@ -26,8 +26,8 @@ MLIR dialect libraries for using the Regional Value State Dependence Graph (RVSD
 
 - Ensure all [software dependencies](#software-dependencies) have been installed and are working correctly
 - Set the `LLVM_DIR` and `MLIR_DIR` environment variables to the paths containing the CMake directories for your LLVM and MLIR installations respectively.
-    - The value for `LLVM_DIR` can often be found by running `llvm-config-16 --cmakedir`
-    - The value for `MLIR_DIR` can often be found by running `llvm-config-16 --prefix` and appending `/lib/cmake/mlir` to the result
+    - The value for `LLVM_DIR` can often be found by running `llvm-config-18 --cmakedir`
+    - The value for `MLIR_DIR` can often be found by running `llvm-config-18 --prefix` and appending `/lib/cmake/mlir` to the result
 - Create a directory names `build` within the project root directory
 - Run the following commands from inside the `build` directory:
 ```bash
