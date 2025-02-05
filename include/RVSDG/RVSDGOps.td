@@ -119,7 +119,7 @@ def RVSDG_LambdaNode: RVSDG_StructuralNode<"lambdaNode", [DeclareOpInterfaceMeth
     );
 
     let results = (outs
-        RVSDG_LambdaRef: $reference
+        LLVMPointerType: $reference
     );
 
     let regions = (region
@@ -288,11 +288,15 @@ def RVSDG_DeltaNode: RVSDG_StructuralNode<"deltaNode", [Pure]>{
     }];
 
     let arguments = (ins
-        Variadic<AnyType>:$inputs
+        Variadic<AnyType>:$inputs, 
+        StrAttr:$name,
+        StrAttr:$linkage,
+        StrAttr:$section,
+        BoolAttr:$constant
     );
 
     let results = (outs
-        AnyTypeOf<[RVSDG_Pointer, LLVMPointerType]>: $output
+        LLVMPointerType: $output
     );
 
     let regions = (region

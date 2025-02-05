@@ -80,18 +80,18 @@ ConfinedType<RVSDG_Ctrl,
 BuildableType<"::mlir::rvsdg::RVSDG_CTRLType::get($_builder.getContext(), " # nOptions # ")"> 
 ;
 
-def RVSDG_Pointer : RVSDG_Type<"RVSDGPointer", "ptr"> {
-    let summary = "Generic pointer type";
-    let description = [{
-        Generic pointer type. Mostly exists for interfacing with the JLM compiler.
-        This type is also used for the output of delta nodes.
-    }];
+// def RVSDG_Pointer : RVSDG_Type<"RVSDGPointer", "ptr"> {
+//     let summary = "Generic pointer type";
+//     let description = [{
+//         Generic pointer type. Mostly exists for interfacing with the JLM compiler.
+//         This type is also used for the output of delta nodes.
+//     }];
 
-    let parameters = (ins
-        OptionalParameter<"mlir::Type", "Type of the element pointed to by the pointer">:$elementType
-    );
+//     let parameters = (ins
+//         OptionalParameter<"mlir::Type", "Type of the element pointed to by the pointer">:$elementType
+//     );
 
-    let assemblyFormat = "(`<` $elementType^ `>`)?";
-}
+//     let assemblyFormat = "(`<` $elementType^ `>`)?";
+// }
 
 #endif //RVSDG_TYPES
