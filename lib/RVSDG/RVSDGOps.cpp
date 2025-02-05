@@ -11,6 +11,7 @@
 #include "RVSDG/RVSDGASMDirectives.h"
 
 #include <iostream>
+#include <unordered_map>
 
 using namespace mlir;
 using namespace rvsdg;
@@ -199,22 +200,14 @@ mlir::Region* LambdaNode::getCallableRegion() {
   return &this->getRegion();
 }
 
-ArrayAttr LambdaNode::getCallableArgAttrs()
-{
+llvm::ArrayRef<mlir::Type> LambdaNode::getArgumentTypes() {
   // TODO - Implement this function
-  std::cerr << "ArrayAttr LambdaNode::getCallableArgAttrs() - has not been implemented" << std::endl;
-  exit(-1);
-  return {};
-}
-ArrayAttr LambdaNode::getCallableResAttrs()
-{
-  // TODO - Implement this function
-  std::cerr << "ArrayAttr LambdaNode::getCallableResAttrs() - has not been implemented" << std::endl;
+  std::cerr << "llvm::ArrayRef<mlir::Type> LambdaNode::getArgumentTypes() - has not been implemented" << std::endl;
   exit(-1);
   return {};
 }
 
-llvm::ArrayRef<mlir::Type> LambdaNode::getCallableResults() {
+llvm::ArrayRef<mlir::Type> LambdaNode::getResultTypes() {
   auto type = this->getResult().getType().dyn_cast_or_null<LambdaRefType>();
   assert(type && "LambdaNode has invalid result type");
   return type.getReturnTypes();
@@ -283,6 +276,13 @@ void ApplyNode::setCalleeFromCallable(CallInterfaceCallable callee)
 {
   // TODO - Implement this function
   std::cerr << "void ApplyNode::setCalleeFromCallable(CallInterfaceCallable callee) - has not been implemented" << std::endl;
+  exit(-1);
+}
+
+mlir::MutableOperandRange ApplyNode::getArgOperandsMutable()
+{
+  // TODO - Implement this function
+  std::cerr << "getArgOperandsMutable() - has not been implemented" << std::endl;
   exit(-1);
 }
 
@@ -495,8 +495,6 @@ LogicalResult DeltaResult::verify() {
   mlir::Type outputElementType;
   if (auto rvsdgPtrType = outputType.dyn_cast_or_null<RVSDGPointerType>()) {
     outputElementType = rvsdgPtrType.getElementType();
-  } else if (auto llvmPtrType = outputType.dyn_cast_or_null<mlir::LLVM::LLVMPointerType>()) {
-    outputElementType = llvmPtrType.getElementType(); 
   }
   if (resultType != outputElementType) {
     return emitOpError("Type mismatch between DeltaResult and DeltaNode output.")
