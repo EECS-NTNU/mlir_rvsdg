@@ -17,7 +17,7 @@ def JLM_Load: JLM_Op<"load", []> {
     }];
 
     let arguments = (ins
-        RVSDG_Pointer:$pointer,
+        LLVMPointerType:$pointer,
         UI32Attr:$alignment,
         Variadic<RVSDG_MemState>:$inputMemStates
     );
@@ -38,7 +38,7 @@ def JLM_Store: JLM_Op<"store"> {
     }];
 
     let arguments = (ins
-        RVSDG_Pointer:$pointer,
+        LLVMPointerType:$pointer,
         AnyType:$value,
         UI32Attr:$alignment,
         Variadic<RVSDG_MemState>:$inputMemStates
@@ -66,12 +66,35 @@ def JLM_Alloca: JLM_Op<"alloca"> {
     );
 
     let results = (outs
-        RVSDG_Pointer:$output,
+        LLVMPointerType:$output,
         RVSDG_MemState:$outputMemState
     );
 
     // let assemblyFormat = "attr-dict $size, $alignment `(` $inputMemStates `)` `->` type($output) `,` type($outputMemState)";
     let hasVerifier = 1;
+}
+
+def JLM_Call: JLM_Op<"call"> {
+    let summary = "Call a function";
+    let description = [{
+        Call a function.
+    }];
+
+    let arguments = (ins
+        LLVMPointerType:$callee,
+        Variadic<AnyType>:$args,
+        RVSDG_IOState:$inputIoState,
+        RVSDG_MemState:$inputMemState
+    );
+
+    let results = (outs
+        Optional<AnyType>:$outputValue,
+        RVSDG_IOState:$outputIoState,
+        RVSDG_MemState:$outputMemState
+    );
+
+    // let assemblyFormat = "attr-dict $size, $alignment `(` $inputMemStates `)` `->` type($output) `,` type($outputMemState)";
+    // let hasVerifier = 1;
 }
 
 def JLM_Memcpy: JLM_Op<"memcpy"> {
@@ -82,8 +105,8 @@ def JLM_Memcpy: JLM_Op<"memcpy"> {
     }];
 
     let arguments = (ins 
-        RVSDG_Pointer:$dst,
-        RVSDG_Pointer:$src,
+        LLVMPointerType:$dst,
+        LLVMPointerType:$src,
         AnySignlessInteger:$len,
         AnyTypeOf<[I1, RVSDG_Ctrl<2>]>: $isVolatile,
         Variadic<RVSDG_MemState>:$inputMemStates
