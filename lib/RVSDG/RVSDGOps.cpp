@@ -115,50 +115,6 @@ GammaResult::verify()
 LogicalResult
 LambdaNode::verify()
 {
-
-  // Value signatureVal = this->getResult();
-  // if (!signatureVal.getType().isa<LambdaRefType>()) {
-  //   return emitOpError(
-  //       "Result type is invalid. Expected an instance of LambdaRefType.");
-  // }
-  // LambdaRefType signatureType = signatureVal.getType().cast<LambdaRefType>();
-
-  // ArrayRef<Type> signatureParamTypes = signatureType.getParameterTypes();
-  // auto bodyArgumentTypes = this->getRegion().getArgumentTypes();
-  // auto nodeInputTypes = this->getOperandTypes();
-
-  // if (bodyArgumentTypes.size() != signatureParamTypes.size() + nodeInputTypes.size()) {
-  //   return emitOpError("Mismatched number of arguments between lambda signature and body. ")
-  //          << "Signature has " << signatureParamTypes.size() << " arguments\n"
-  //          << "Node has " << nodeInputTypes.size() << " inputs\n"
-  //          << "Total number of arguments should be " << signatureParamTypes.size() +
-  //          nodeInputTypes.size() << "\n"
-  //          << "Body has " << bodyArgumentTypes.size() << " arguments. ";
-  // }
-
-  // for (size_t sigI = 0, argI = 0;
-  //      sigI < signatureParamTypes.size(); ++sigI, ++argI) {
-  //   if (signatureParamTypes[sigI] != bodyArgumentTypes[argI]) {
-  //     return emitOpError("Mismatched types between lambda signature and body "
-  //                        "arguments. ")
-  //            << "Signature argument #" << sigI << " has type "
-  //            << signatureParamTypes[sigI] << ". Body argument #" << argI
-  //            << " has type " << bodyArgumentTypes[argI];
-  //   }
-  // }
-
-  // for (size_t inI = 0, argI=signatureParamTypes.size(); inI < nodeInputTypes.size(); ++inI,
-  // ++argI) {
-  //   if (nodeInputTypes[inI] != bodyArgumentTypes[argI]) {
-  //     return emitOpError("Mismatched types in lambda node body arguments. "
-  //                        "First arguments "
-  //                        "should match node inputs. "
-  //                        "Offending argument: #")
-  //            << argI << " Expected " << nodeInputTypes[inI] << ", got "
-  //            << bodyArgumentTypes[argI];
-  //   }
-  // }
-
   return LogicalResult::success();
 }
 
@@ -172,37 +128,12 @@ LambdaNode::verify()
 LogicalResult
 LambdaResult::verify()
 {
-  // auto parent = dyn_cast<LambdaNode>((*this)->getParentOp());
-  // if (parent == NULL) {
-  //   return emitOpError(
-  //       "LambdaResult has no parent of type LambdaNode. This error should "
-  //       "never appear, so if it does, may God have mercy on your soul");
-  // }
-  // Value signatureVal = parent.getResult();
-  // if (!signatureVal.getType().isa<LambdaRefType>()) {
-  //   return emitOpError(
-  //       "Result type is invalid. Expected an instance of LambdaRefType.");
-  // }
-  // LambdaRefType signatureType = signatureVal.getType().cast<LambdaRefType>();
-  // ArrayRef<Type> signatureReturnTypes = signatureType.getReturnTypes();
-
-  // auto resultTypes = this->getOperandTypes();
-
-  // if (signatureReturnTypes.size() != resultTypes.size()) {
-  //   return emitOpError("Number of operands to lambda terminator does not match "
-  //                      "number of return types in signature.");
-  // }
-
-  // size_t typeIndex = 0;
-  // for (auto [sigType, resType] : zip(signatureReturnTypes, resultTypes)) {
-  //   if (sigType != resType) {
-  //     return emitOpError("Type mismatch between lambda signature and lambda "
-  //                        "result Op. Offending type: #")
-  //            << typeIndex << " Signature has type " << sigType
-  //            << ", result Op has type " << resType;
-  //   }
-  //   ++typeIndex;
-  // }
+  auto parent = dyn_cast<LambdaNode>((*this)->getParentOp());
+  if (parent == NULL) {
+    return emitOpError(
+        "LambdaResult has no parent of type LambdaNode. This error should "
+        "never appear, so if it does, may God have mercy on your soul");
+  }
 
   return LogicalResult::success();
 }
@@ -543,21 +474,6 @@ DeltaResult::verify()
   {
     return emitOpError("DeltaResult has no parent of type DeltaNode.");
   }
-  // auto resultType = this->getOperand().getType();
-  // auto outputType = parent.getOutput().getType();
-  // mlir::Type outputElementType;
-  // if (auto rvsdgPtrType = outputType.dyn_cast_or_null<RVSDGPointerType>()) {
-  //   outputElementType = rvsdgPtrType.getElementType();
-  // }
-  // All pointers are opaque in LLVM 18 so this check does not make sense
-  //  else if (auto llvmPtrType = outputType.dyn_cast_or_null<mlir::LLVM::LLVMPointerType>()) {
-  //    outputElementType = llvmPtrType.getElementType();
-  //  }
-  // if (resultType != outputElementType) {
-  //   return emitOpError("Type mismatch between DeltaResult and DeltaNode output.")
-  //          << " DeltaResult type: " << resultType
-  //          << " DeltaNode output element type: " << outputElementType;
-  // }
   return LogicalResult::success();
 }
 
