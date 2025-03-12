@@ -9,19 +9,38 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lstdc++")
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT DEFINED LLVM_DIR)
-  set(LLVM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llvm/build/lib/cmake/llvm")
-  message(STATUS "LLVM_DIR not explicitly defined. Attempting to use submodule at ${LLVM_DIR}")
+  set(LLVM_DIR "${POLYGEIST_BUILD_DIR}/tools/polygeist/llvm/build/lib/cmake/llvm")
+  message(STATUS "LLVM_DIR not explicitly defined. Using Polygeist's LLVM at ${LLVM_DIR}")
 endif()
 
 if(NOT DEFINED MLIR_DIR)
-  set(MLIR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llvm/build/lib/cmake/mlir")
-  message(STATUS "MLIR_DIR not explicitly defined. Attempting to use submodule at ${MLIR_DIR}")
+  set(MLIR_DIR "${POLYGEIST_BUILD_DIR}/tools/polygeist/llvm/build/lib/cmake/mlir")
+  message(STATUS "MLIR_DIR not explicitly defined. Using Polygeist's MLIR at ${MLIR_DIR}")
 endif()
 
 find_package(MLIR REQUIRED CONFIG)
 
 message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+# Polygeist configuration
+set(POLYGEIST_SOURCE_DIR "/home/halvor/Polygeist")
+set(POLYGEIST_BUILD_DIR "${POLYGEIST_SOURCE_DIR}/build")
+
+# Add Polygeist libraries
+add_library(MLIRPolygeist STATIC IMPORTED)
+set_target_properties(MLIRPolygeist PROPERTIES
+    IMPORTED_LOCATION "${POLYGEIST_BUILD_DIR}/lib/libMLIRPolygeist.a"
+)
+
+add_library(MLIRPolygeistTransforms STATIC IMPORTED)
+set_target_properties(MLIRPolygeistTransforms PROPERTIES
+    IMPORTED_LOCATION "${POLYGEIST_BUILD_DIR}/lib/libMLIRPolygeistTransforms.a"
+)
+
+# Add Polygeist include directories
+# include_directories(${POLYGEIST_BUILD_DIR}/include)
+# include_directories(${POLYGEIST_SOURCE_DIR}/include)
 
 set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/bin)
 set(LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/lib)
@@ -41,6 +60,8 @@ endif()
 
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
+include_directories(${POLYGEIST_SOURCE_DIR}/include)
+include_directories("${POLYGEIST_BUILD_DIR}/tools/polygeist/include")
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})

@@ -1,4 +1,3 @@
-
 add_mlir_dialect_library(MLIRRVSDG
     RVSDGTypes.cpp
     RVSDGAttrs.cpp
@@ -7,6 +6,7 @@ add_mlir_dialect_library(MLIRRVSDG
     RVSDGOpInterfaces.cpp
     
     RVSDGPrintExportPass.cpp
+    RVSDGImportPolygeistPass.cpp
 
     DEPENDS
     MLIRRVSDGDialectIncGen
@@ -20,6 +20,8 @@ add_mlir_dialect_library(MLIRRVSDG
     MLIRDialect
     MLIRIR
     MLIRDialectUtils
+    MLIRPolygeist
+    MLIRPolygeistTransforms
 )
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/RVSDG" DESTINATION include
