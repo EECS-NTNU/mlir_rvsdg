@@ -1,4 +1,3 @@
-
 set(LLVM_TARGET_DEFINITIONS RVSDGDialect.td)
 mlir_tablegen(Dialect.h.inc -gen-dialect-decls)
 mlir_tablegen(Dialect.cpp.inc -gen-dialect-defs)
@@ -39,5 +38,12 @@ set(LLVM_TARGET_DEFINITIONS RVSDGPasses.td)
 mlir_tablegen(Passes.h.inc -gen-pass-decls)
 add_public_tablegen_target(MLIRRVSDGPassIncGen)
 add_dependencies(mlir-headers MLIRRVSDGPassIncGen)
+
+set(LLVM_TARGET_DEFINITIONS RVSDGPatterns.td)
+mlir_tablegen(Patterns.h.inc -gen-rewriters 
+              -I${POLYGEIST_SOURCE_DIR}/include
+              -I${POLYGEIST_SOURCE_DIR}/include/polygeist)
+add_public_tablegen_target(MLIRRVSDGPatternsIncGen)
+add_dependencies(mlir-headers MLIRRVSDGPatternsIncGen)
 
 add_mlir_doc(RVSDGOps RVSDGDialect Dialects/ -gen-dialect-doc)
