@@ -1,6 +1,4 @@
-
 include "mlir/Pass/PassBase.td"
-
 include "RVSDG/RVSDGOps.td"
 
 def RVSDG_PrintExportPass: PassBase<"rvsdg-print-export", "::mlir::Pass"> {
