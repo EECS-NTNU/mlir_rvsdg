@@ -149,7 +149,7 @@ def JLM_Undef: JLM_Op<"undef"> {
     let assemblyFormat = "attr-dict `:` type($output)";
 }
 
-def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> { // Types must be verified
+def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
     let summary = "Constant data array operation";
     let description = [{
         Constant data array operation.
@@ -163,5 +163,5 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> { // Types must be verifi
         LLVMArrayType:$output
     );
 
-    // let assemblyFormat = "attr-dict `:` type($output)";
+    let hasVerifier = 1;
 }
