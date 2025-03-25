@@ -97,6 +97,24 @@ def JLM_Call: JLM_Op<"call"> {
     // let hasVerifier = 1;
 }
 
+def JLM_Free: JLM_Op<"free"> {
+    let summary = "Free memory";
+    let description = [{
+        Free memory.
+    }];
+
+    let arguments = (ins
+        LLVMPointerType:$input,
+        Variadic<RVSDG_MemState>:$inputMemStates,
+        RVSDG_IOState:$inputIoState
+    );
+
+    let results = (outs
+        Variadic<RVSDG_MemState>:$outputMemStates,
+        RVSDG_IOState:$outputIoState
+    );
+}
+
 def JLM_Memcpy: JLM_Op<"memcpy"> {
     let summary = "Copy memory content from one location to another";
     let description = [{
