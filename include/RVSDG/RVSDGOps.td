@@ -119,7 +119,7 @@ def RVSDG_LambdaNode: RVSDG_StructuralNode<"lambdaNode", [DeclareOpInterfaceMeth
     );
 
     let results = (outs
-        RVSDG_LambdaRef: $reference
+        LLVMPointerType: $reference
     );
 
     let regions = (region
@@ -147,27 +147,6 @@ def RVSDG_LambdaResult: RVSDG_Op<"lambdaResult", [
     );
 
     let assemblyFormat = "attr-dict custom<TypedParamList>($outputValues, type($outputValues))";
-
-    let hasVerifier = 1;
-}
-
-def RVSDG_ApplyNode: RVSDG_Op<"applyNode", [DeclareOpInterfaceMethods<CallOpInterface>]>{
-    let summary = "RVSDG apply node. Used to call lambda nodes";
-    let description = [{
-        RVSDG apply node. Takes a reference to the lambda node to be called as its first input
-        followed by the arguments for the lambda. Outputs the results of applying the lambda node.
-    }];
-
-    let arguments = (ins
-        RVSDG_LambdaRef: $lambda,
-        Variadic<AnyType>: $parameters
-    );
-
-    let results = (outs
-        Variadic<AnyType>: $results
-    );
-
-    let assemblyFormat = "attr-dict $lambda `:` type($lambda) custom<TypedParamList>($parameters, type($parameters)) (`->` type($results)^)?";
 
     let hasVerifier = 1;
 }
@@ -288,11 +267,15 @@ def RVSDG_DeltaNode: RVSDG_StructuralNode<"deltaNode", [Pure]>{
     }];
 
     let arguments = (ins
-        Variadic<AnyType>:$inputs
+        Variadic<AnyType>:$inputs, 
+        StrAttr:$name,
+        StrAttr:$linkage,
+        StrAttr:$section,
+        BoolAttr:$constant
     );
 
     let results = (outs
-        AnyTypeOf<[RVSDG_Pointer, LLVMPointerType]>: $output
+        LLVMPointerType: $output
     );
 
     let regions = (region

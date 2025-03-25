@@ -45,6 +45,24 @@ LogicalResult jlm::Alloca::verify() {
 }
 
 /**
+ * ConstantDataArray
+ */
+LogicalResult jlm::ConstantDataArray::verify() {
+
+  auto operands = this->getOperands().getTypes();
+  if (!operands.empty()) {
+    auto firstType = operands.front();
+    for (auto operand : operands) {
+      if (operand != firstType) {
+        return emitOpError("All operands must have the same type.");
+      }
+    }
+  }
+
+  return LogicalResult::success();
+}
+
+/**
  * Auto generated sources
  */
 #define GET_OP_CLASSES
