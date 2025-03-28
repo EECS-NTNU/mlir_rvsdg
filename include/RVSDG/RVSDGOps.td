@@ -101,8 +101,10 @@ def RVSDG_OmegaArgument: RVSDG_Op<"omegaArgument", [
     );
 
     let results = (outs
-        LLVMPointerType:$argument
+        AnyTypeOf<[LLVMPointerType, FunctionType]>:$importedValue
     );
+
+    let hasVerifier = 1;
 }
 
 /**
