@@ -66,22 +66,6 @@ def RVSDG_GammaResult: RVSDG_Op<"gammaResult", [
 }
 
 
-/**
-*  Omega Node
-*/
-def RVSDG_OmegaNode: RVSDG_StructuralNode<"omegaNode"> {
-    let summary = "RVSDG Omega node. Top level node in RVSDG";
-    let description = [{
-        RVSDG omega node. This is the top level node in RVSDG and models a translation unit.
-        Region arguments for this node are values that are imported from external sources.
-        Region results from this node are exports that can be used in other translation units.
-    }];
-    let arguments = (ins);
-    let results = (outs);
-    let regions = (region SizedRegion<1>:$body);
-    let assemblyFormat = "attr-dict custom<RVSDGRegion>($body)";
-}
-
 def RVSDG_OmegaResult: RVSDG_Op<"omegaResult", [
         HasParent<"mlir::rvsdg::OmegaNode">,
         Pure,
@@ -98,6 +82,46 @@ def RVSDG_OmegaResult: RVSDG_Op<"omegaResult", [
     );
 
     let assemblyFormat = "attr-dict custom<TypedParamList>($outputValues, type($outputValues))";
+}
+
+def RVSDG_OmegaArgument: RVSDG_Op<"omegaArgument", [
+        HasParent<"mlir::rvsdg::OmegaNode">,
+        Pure,
+    ]> {
+    let summary = "Omega node argument";
+    let description = [{
+        Represents a single argument to an Omega Node. 
+        This is a reference to an external value
+    }];
+
+    let arguments = (ins
+        TypeAttr:$valueType,
+        StrAttr:$linkage,
+        StrAttr:$name
+    );
+
+    let results = (outs
+        AnyTypeOf<[LLVMPointerType, FunctionType]>:$importedValue
+    );
+
+    let hasVerifier = 1;
+}
+
+/**
+*  Omega Node
+*/
+def RVSDG_OmegaNode: RVSDG_StructuralNode<"omegaNode", [
+    SingleBlockImplicitTerminator<"OmegaResult">
+]> {
+    let summary = "RVSDG Omega node. Top level node in RVSDG";
+    let description = [{
+        RVSDG omega node. This is the top level node in RVSDG and models a translation unit.
+        Region arguments for this node are values that are imported from external sources.
+        Region results from this node are exports that can be used in other translation units.
+    }];
+    let results = (outs);
+    let regions = (region SizedRegion<1>:$body);
+    let assemblyFormat = "attr-dict custom<RVSDGRegion>($body)";
 }
 
 /**
@@ -119,7 +143,7 @@ def RVSDG_LambdaNode: RVSDG_StructuralNode<"lambdaNode", [DeclareOpInterfaceMeth
     );
 
     let results = (outs
-        RVSDG_LambdaRef: $reference
+        LLVMPointerType: $reference
     );
 
     let regions = (region
@@ -147,27 +171,6 @@ def RVSDG_LambdaResult: RVSDG_Op<"lambdaResult", [
     );
 
     let assemblyFormat = "attr-dict custom<TypedParamList>($outputValues, type($outputValues))";
-
-    let hasVerifier = 1;
-}
-
-def RVSDG_ApplyNode: RVSDG_Op<"applyNode", [DeclareOpInterfaceMethods<CallOpInterface>]>{
-    let summary = "RVSDG apply node. Used to call lambda nodes";
-    let description = [{
-        RVSDG apply node. Takes a reference to the lambda node to be called as its first input
-        followed by the arguments for the lambda. Outputs the results of applying the lambda node.
-    }];
-
-    let arguments = (ins
-        RVSDG_LambdaRef: $lambda,
-        Variadic<AnyType>: $parameters
-    );
-
-    let results = (outs
-        Variadic<AnyType>: $results
-    );
-
-    let assemblyFormat = "attr-dict $lambda `:` type($lambda) custom<TypedParamList>($parameters, type($parameters)) (`->` type($results)^)?";
 
     let hasVerifier = 1;
 }
@@ -288,11 +291,15 @@ def RVSDG_DeltaNode: RVSDG_StructuralNode<"deltaNode", [Pure]>{
     }];
 
     let arguments = (ins
-        Variadic<AnyType>:$inputs
+        Variadic<AnyType>:$inputs, 
+        StrAttr:$name,
+        StrAttr:$linkage,
+        StrAttr:$section,
+        BoolAttr:$constant
     );
 
     let results = (outs
-        AnyTypeOf<[RVSDG_Pointer, LLVMPointerType]>: $output
+        LLVMPointerType: $output
     );
 
     let regions = (region
