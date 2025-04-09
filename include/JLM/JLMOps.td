@@ -81,7 +81,7 @@ def JLM_Call: JLM_Op<"call"> {
     }];
 
     let arguments = (ins
-        LLVMPointerType:$callee,
+        FunctionType:$callee,
         Variadic<AnyType>:$args,
         RVSDG_IOState:$inputIoState,
         RVSDG_MemState:$inputMemState
