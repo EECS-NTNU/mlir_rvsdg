@@ -143,7 +143,7 @@ def RVSDG_LambdaNode: RVSDG_StructuralNode<"lambdaNode", [DeclareOpInterfaceMeth
     );
 
     let results = (outs
-        LLVMPointerType: $reference
+        FunctionType: $reference
     );
 
     let regions = (region
