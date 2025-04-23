@@ -115,6 +115,22 @@ def JLM_Free: JLM_Op<"free"> {
     );
 }
 
+def JLM_Malloc: JLM_Op<"malloc"> {
+    let summary = "Allocate heap memory";
+    let description = [{
+        Allocate heap memory.
+    }];
+
+    let arguments = (ins
+        AnySignlessInteger:$size
+    );
+
+    let results = (outs
+        LLVMPointerType:$output,
+        RVSDG_MemState:$outputMemState
+    );
+}
+
 def JLM_Memcpy: JLM_Op<"memcpy"> {
     let summary = "Copy memory content from one location to another";
     let description = [{
@@ -179,6 +195,24 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
 
     let results = (outs
         LLVMArrayType:$output
+    );
+
+    let hasVerifier = 1;
+}
+
+def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
+    let summary = "IO barrier operation";
+    let description = [{
+        IO barrier operation.
+    }];
+
+    let arguments = (ins
+        AnyType:$input,
+        RVSDG_IOState:$inputIoState
+    );
+
+    let results = (outs
+        AnyType:$output
     );
 
     let hasVerifier = 1;
