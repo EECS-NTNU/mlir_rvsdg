@@ -478,6 +478,30 @@ DeltaResult::verify()
 }
 
 /**
+ * Omega argument verifier.
+ */
+LogicalResult
+OmegaArgument::verify()
+{
+  auto parent = cast<OmegaNode>((*this)->getParentOp());
+  if (parent == NULL)
+  {
+    return emitOpError("OmegaArgument has no parent of type OmegaNode. This error should never "
+                       "appear, so if it does, may God have mercy on your soul");
+  }
+
+  auto importedType = this->getImportedValue().getType();
+  auto valueType = this->getValueType();
+  if (valueType.isa<FunctionType>())
+  {
+    return valueType == importedType ? success() : emitOpError("Type mismatch between OmegaArgument imported and value types");
+  }
+  else {
+    return importedType.isa<LLVM::LLVMPointerType>() ? success() : emitOpError("Type mismatch between OmegaArgument imported and value types");
+  }
+}
+
+/**
  * Match operator verifier.
  * Verifies the following attributes:
  * - No duplicate inputs in the match rules

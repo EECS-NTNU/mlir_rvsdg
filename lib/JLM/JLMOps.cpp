@@ -63,6 +63,18 @@ LogicalResult jlm::ConstantDataArray::verify() {
 }
 
 /**
+ * IOBarrier
+ */
+LogicalResult jlm::IOBarrier::verify() {
+  auto inputType = this->getOperand(0).getType();
+  auto outputType = this->getResult().getType();
+  if (inputType != outputType) {
+    return emitOpError("Input and output types must be the same.");
+  }
+  return LogicalResult::success();
+}
+
+/**
  * Auto generated sources
  */
 #define GET_OP_CLASSES

@@ -81,7 +81,7 @@ def JLM_Call: JLM_Op<"call"> {
     }];
 
     let arguments = (ins
-        LLVMPointerType:$callee,
+        FunctionType:$callee,
         Variadic<AnyType>:$args,
         RVSDG_IOState:$inputIoState,
         RVSDG_MemState:$inputMemState
@@ -112,6 +112,22 @@ def JLM_Free: JLM_Op<"free"> {
     let results = (outs
         Variadic<RVSDG_MemState>:$outputMemStates,
         RVSDG_IOState:$outputIoState
+    );
+}
+
+def JLM_Malloc: JLM_Op<"malloc"> {
+    let summary = "Allocate heap memory";
+    let description = [{
+        Allocate heap memory.
+    }];
+
+    let arguments = (ins
+        AnySignlessInteger:$size
+    );
+
+    let results = (outs
+        LLVMPointerType:$output,
+        RVSDG_MemState:$outputMemState
     );
 }
 
@@ -179,6 +195,24 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
 
     let results = (outs
         LLVMArrayType:$output
+    );
+
+    let hasVerifier = 1;
+}
+
+def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
+    let summary = "IO barrier operation";
+    let description = [{
+        IO barrier operation.
+    }];
+
+    let arguments = (ins
+        AnyType:$input,
+        RVSDG_IOState:$inputIoState
+    );
+
+    let results = (outs
+        AnyType:$output
     );
 
     let hasVerifier = 1;
