@@ -11,7 +11,6 @@ namespace mlir::rvsdg::importPolygeistPass
 {
 #define GEN_PASS_DEF_RVSDG_IMPORTPOLYGEISTPASS
 #include "RVSDG/Passes.h.inc"
-#include "RVSDG/Patterns.h.inc"
 }
 
 struct ImportPolygeistPass
@@ -33,7 +32,6 @@ struct ImportPolygeistPass
   runOnOperation() override
   {
     printf("Running ImportPolygeistPass\n");
-    
   }
 
 private:
