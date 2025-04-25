@@ -7,6 +7,7 @@
 #include "RVSDG/RVSDGOps.h"
 
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/Dialect/Vector/IR/VectorOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>

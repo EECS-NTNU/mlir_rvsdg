@@ -19,6 +19,7 @@ def RVSDG_ImportPolygeistPass: PassBase<"rvsdg-import-polygeist", "::mlir::Pass"
 
     let dependentDialects = [
         "mlir::rvsdg::RVSDGDialect",
+        "vector::VectorDialect",
         "func::FuncDialect",
         "LLVM::LLVMDialect",
         "memref::MemRefDialect",
