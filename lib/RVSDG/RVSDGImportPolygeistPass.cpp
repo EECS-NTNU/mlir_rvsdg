@@ -442,6 +442,19 @@ struct ImportPolygeistPass
         MlirOp = omegaArgument;
       }
     }
+    else if (auto funcOp = mlir::dyn_cast<mlir::LLVM::LLVMFuncOp>(op))
+    {
+      printf("Converting llvm.func to OmegaArgument\n");
+      auto type = ConvertType(funcOp.getFunctionType());
+      auto omegaArgument = Builder_->create<::mlir::rvsdg::OmegaArgument>(
+          Builder_->getUnknownLoc(),
+          type,
+          type,
+          Builder_->getStringAttr("external_linkage"),
+          Builder_->getStringAttr(funcOp.getName()));
+      globals[funcOp.getName().str()] = omegaArgument;
+      MlirOp = omegaArgument;
+    }
     else if (auto allocOp = mlir::dyn_cast<mlir::memref::AllocOp>(op))
     {
       auto type = allocOp.getType().cast<mlir::MemRefType>();
@@ -562,11 +575,37 @@ struct ImportPolygeistPass
       {
         resultTypes.push_back(ConvertType(result.getType()));
       }
+      resultTypes.push_back(Builder_->getType<mlir::rvsdg::IOStateEdgeType>());
+      resultTypes.push_back(Builder_->getType<mlir::rvsdg::MemStateEdgeType>());
       printf("Converting func.call to jlm.call\n");
       auto call = Builder_->create<mlir::jlm::Call>(
           Builder_->getUnknownLoc(),
           resultTypes,
           ConvertName(callOp.getCallee().str(), nameMap),
+          inputs,
+          newestIOState,
+          newestMemState);
+      newestIOState = call.getOutputIoState();
+      newestMemState = call.getOutputMemState();
+      MlirOp = call;
+      // Change to jlm.call
+    }
+    else if (auto callOp = mlir::dyn_cast<mlir::LLVM::CallOp>(op))
+    {
+      printf("Converting llvm.call to jlm.call\n");
+      mlir::SmallVector<mlir::Type> resultTypes;
+      for (auto result : callOp.getResults())
+      {
+        resultTypes.push_back(ConvertType(result.getType()));
+      }
+      resultTypes.push_back(Builder_->getType<mlir::rvsdg::IOStateEdgeType>());
+      resultTypes.push_back(Builder_->getType<mlir::rvsdg::MemStateEdgeType>());
+      auto callee = callOp.getCallee();
+      assert(callee.has_value());
+      auto call = Builder_->create<mlir::jlm::Call>(
+          Builder_->getUnknownLoc(),
+          resultTypes,
+          ConvertName(callee.value().str(), nameMap),
           inputs,
           newestIOState,
           newestMemState);
@@ -669,18 +708,6 @@ struct ImportPolygeistPass
       printf("Keeping operation: %s\n", op.getName().getStringRef().data());
       MlirOp = op.clone();
       MlirOp->setOperands(inputs);
-    }
-    else if (auto funcOp = mlir::dyn_cast<mlir::LLVM::LLVMFuncOp>(op))
-    {
-      printf("Converting llvm.func to OmegaArgument\n");
-      auto type = ConvertType(funcOp.getFunctionType());
-      auto omegaArgument = Builder_->create<::mlir::rvsdg::OmegaArgument>(
-          Builder_->getUnknownLoc(),
-          type,
-          type,
-          Builder_->getStringAttr("external_linkage"),
-          Builder_->getStringAttr(funcOp.getName()));
-      MlirOp = omegaArgument;
     }
     else
     {
@@ -850,6 +877,23 @@ struct ImportPolygeistPass
           nameDependencies[currentOp] = std::unordered_set<std::string>();
         }
         nameDependencies[currentOp].insert(calleeName);
+        currentRegion = currentOp->getParentRegion();
+      }
+    }
+
+    if (auto callOp = mlir::dyn_cast<mlir::LLVM::CallOp>(op))
+    {
+      auto calleeName = callOp.getCallee();
+      assert(calleeName.has_value());
+      auto currentRegion = op->getParentRegion();
+      while (!mlir::isa<mlir::ModuleOp>(currentRegion->getParentOp()))
+      {
+        auto currentOp = currentRegion->getParentOp();
+        if (nameDependencies.find(currentOp) == nameDependencies.end())
+        {
+          nameDependencies[currentOp] = std::unordered_set<std::string>();
+        }
+        nameDependencies[currentOp].insert(calleeName.value().str());
         currentRegion = currentOp->getParentRegion();
       }
     }
