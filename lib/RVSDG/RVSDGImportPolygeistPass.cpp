@@ -132,20 +132,23 @@ struct ImportPolygeistPass
       const std::unordered_map<mlir::Value, mlir::Value> & valueMap)
   {
     ::llvm::SmallVector<::mlir::Value> inputs;
-    for (auto operand : op.getOperands())
+    for (const auto & operand : op.getOperands())
     {
-      auto it = valueMap.find(operand);
-      if (it != valueMap.end())
-      {
-        inputs.push_back(it->second);
-      }
-      else
-      {
-        printf("Unimplemented input type: \n");
-        operand.dump();
-      }
+      inputs.push_back(ConvertValue(operand, valueMap));
     }
     return inputs;
+  }
+
+  mlir::Value
+  ConvertValue(mlir::Value value, const std::unordered_map<mlir::Value, mlir::Value> & valueMap)
+  {
+    auto it = valueMap.find(value);
+    if (it != valueMap.end())
+    {
+      return it->second;
+    }
+    printf("Unimplemented input type: \n");
+    value.dump();
   }
 
   ::llvm::SmallVector<::mlir::Value>
@@ -153,11 +156,16 @@ struct ImportPolygeistPass
       mlir::Region & resultRegion,
       mlir::Region & sourceRegion,
       bool includeMemState,
-      bool includeIOState)
+      bool includeIOState,
+      std::unordered_map<mlir::Value, mlir::Value> & oldValueMap)
   {
     printf("Converting region\n");
     std::unordered_map<mlir::Value, mlir::Value> valueMap;
     auto & resultBlock = resultRegion.getBlocks().front();
+
+    for (auto oldValue : oldValueMap) {
+      valueMap[oldValue.first] = oldValue.second;
+    }
 
     if (includeMemState)
     {
@@ -190,9 +198,13 @@ struct ImportPolygeistPass
     // hash map for easy lookup of corresponding MLIR operation
     for (auto & op : sourceRegion.getOps())
     {
+      op.dump();
       auto inputs = GetConvertedInputs(op, valueMap);
 
-      auto convertedOp = ConvertOperation(op, resultBlock, inputs);
+      auto convertedOp = ConvertOperation(op, resultBlock, valueMap, inputs);
+      if (!convertedOp) {
+        continue;
+      }
       for (size_t i = 0; i < op.getNumResults(); i++)
       {
         valueMap[op.getResult(i)] = convertedOp->getResult(i);
@@ -206,14 +218,106 @@ struct ImportPolygeistPass
   ConvertOperation(
       mlir::Operation & op,
       mlir::Block & resultBlock,
+      std::unordered_map<mlir::Value, mlir::Value> & valueMap,
       llvm::SmallVector<mlir::Value> & inputs)
   {
-    op.dump();
-    ::mlir::Operation * MlirOp;
+    ::mlir::Operation * MlirOp = nullptr;
     if (auto forOp = mlir::dyn_cast<mlir::scf::ForOp>(op))
     {
       printf("Converting scf.for to Theta\n");
-      // Change to Theta
+
+      llvm::SmallVector<mlir::Value> thetaArgs = { inputs.begin(), inputs.end() };
+      llvm::SmallVector<mlir::Value> thetaArgsOld = { forOp.getOperands().begin(), forOp.getOperands().end() };
+      for (auto dependency : operationDependencies[&op])
+      {
+        thetaArgs.push_back(ConvertValue(dependency, valueMap));
+        thetaArgsOld.push_back(dependency);
+      }
+      thetaArgsOld[0] = forOp.getInductionVar();
+      thetaArgs.push_back(newestMemState);
+      thetaArgs.push_back(newestIOState);
+
+      llvm::SmallVector<mlir::Type> thetaOutputs = {};
+      for (auto arg : thetaArgs)
+      {
+        thetaOutputs.push_back(arg.getType());
+      }
+
+      llvm::SmallVector<mlir::NamedAttribute> attributes = {};
+      auto theta = Builder_->create<mlir::rvsdg::ThetaNode>(
+          Builder_->getUnknownLoc(),
+          thetaOutputs,
+          thetaArgs,
+          attributes);
+
+      auto & thetaBlock = theta.getRegion().emplaceBlock();
+      for (auto arg : thetaArgs)
+      {
+        thetaBlock.addArgument(arg.getType(), Builder_->getUnknownLoc());
+      }
+
+      auto nThetaArgs = thetaArgs.size();
+      auto thetaBlockMemState = thetaBlock.getArgument(nThetaArgs - 2);
+      auto thetaBlockIOState = thetaBlock.getArgument(nThetaArgs - 1);
+      newestMemState = thetaBlockMemState;
+      newestIOState = thetaBlockIOState;
+
+      auto thetaBlockInductionVar = thetaBlock.getArgument(0);
+      auto thetaBlockUpperBound = thetaBlock.getArgument(1);
+      auto thetaBlockStep = thetaBlock.getArgument(2);
+
+      auto predicate = Builder_->create<mlir::arith::CmpIOp>(
+          Builder_->getUnknownLoc(),
+          mlir::arith::CmpIPredicate::slt,
+          thetaBlockInductionVar,
+          thetaBlockUpperBound);
+
+      // Create gamma node (if-then-else) for first iteration check
+      auto gamma = Builder_->create<mlir::rvsdg::GammaNode>(
+          Builder_->getUnknownLoc(),
+          thetaOutputs,
+          predicate,
+          thetaBlock.getArguments(),
+          2);
+
+      auto &gammaBlock = gamma.getRegion(0).emplaceBlock();
+      auto &dummyBlock = gamma.getRegion(1).emplaceBlock();
+
+      for (auto arg : gamma.getOperands())
+      {
+        gammaBlock.addArgument(arg.getType(), Builder_->getUnknownLoc());
+        dummyBlock.addArgument(arg.getType(), Builder_->getUnknownLoc());
+      }
+      auto blockArgsValueMap = std::unordered_map<mlir::Value, mlir::Value>();
+      for (size_t i = 0; i < thetaArgsOld.size(); i++) {
+        blockArgsValueMap[thetaArgsOld[i]] = gammaBlock.getArgument(i);
+      }
+
+      ConvertRegion(gamma.getRegion(0), forOp.getRegion(), false, false, blockArgsValueMap);
+
+      auto gammaResult = Builder_->create<mlir::rvsdg::GammaResult>(
+          Builder_->getUnknownLoc(),
+          gammaBlock.getArguments());
+
+      auto dummyResult = Builder_->create<mlir::rvsdg::GammaResult>(
+          Builder_->getUnknownLoc(),
+          dummyBlock.getArguments());
+
+      gammaBlock.push_back(gammaResult);
+      dummyBlock.push_back(dummyResult);
+
+      auto thetaResult = Builder_->create<mlir::rvsdg::ThetaResult>(
+          Builder_->getUnknownLoc(),
+          predicate,
+          thetaBlock.getArguments());
+
+      thetaBlock.push_back(thetaResult);
+
+      MlirOp = theta;
+    }
+    else if (auto yieldOp = mlir::dyn_cast<mlir::scf::YieldOp>(op))
+    {
+      return nullptr; // TODO: Thetaresult should be created here, but none of the loops actually yield anything
     }
     else if (auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>(op))
     {
@@ -237,7 +341,7 @@ struct ImportPolygeistPass
       // resultBlock.push_back(lambda);
 
       auto & lambdaBlock = lambda.getRegion().emplaceBlock();
-      auto regionResults = ConvertRegion(lambda.getRegion(), funcOp.getRegion(), true, true);
+      auto regionResults = ConvertRegion(lambda.getRegion(), funcOp.getRegion(), true, true, valueMap);
       auto lambdaResult =
           Builder_->create<::mlir::rvsdg::LambdaResult>(Builder_->getUnknownLoc(), regionResults);
       lambdaBlock.push_back(lambdaResult);
@@ -260,7 +364,7 @@ struct ImportPolygeistPass
             true);
         // resultBlock.push_back(delta);
         auto & deltaBlock = delta.getRegion().emplaceBlock();
-
+        globals[globalOp.getName().str()] = delta;
         auto stringAttr = value.value().dyn_cast<mlir::StringAttr>();
         llvm::SmallVector<mlir::Value> charArray;
         if (stringAttr)
@@ -331,31 +435,74 @@ struct ImportPolygeistPass
     else if (auto storeOp = mlir::dyn_cast<mlir::memref::StoreOp>(op))
     {
       printf("Converting memref.store to jlm.store\n");
+      auto memrefType = storeOp.getMemRefType();
+      auto nDims = memrefType.getShape().size();
+
+      assert(storeOp.getIndices().size() == nDims);
+
+      mlir::Value currentOutput;
+      size_t stride = 1;
+      for (int i = nDims - 1; i >= 0; i--) {
+        auto index = ConvertValue(storeOp.getIndices()[i], valueMap);
+        auto strideOp = Builder_->create<mlir::arith::ConstantIntOp>(
+            Builder_->getUnknownLoc(),
+            stride,
+            Builder_->getIntegerType(64));
+        auto multiplyOp = Builder_->create<mlir::arith::MulIOp>(
+            Builder_->getUnknownLoc(),
+            Builder_->getType<mlir::IntegerType>(64),
+            index,
+            strideOp);
+        if (i == nDims - 1) {
+          currentOutput = multiplyOp;
+        } else {
+          auto addOp = Builder_->create<mlir::arith::AddIOp>(
+              Builder_->getUnknownLoc(),
+              Builder_->getType<mlir::IntegerType>(64),
+              currentOutput,
+              multiplyOp);
+          currentOutput = addOp;
+        }
+        stride *= memrefType.getShape()[i];
+      }
+      auto getElementPtr = Builder_->create<mlir::LLVM::GEPOp>(
+          Builder_->getUnknownLoc(),
+          Builder_->getType<mlir::LLVM::LLVMPointerType>(),
+          memrefType.getElementType(),
+          ConvertValue(storeOp.getMemRef(), valueMap),
+          currentOutput);
+
+      auto store = Builder_->create<mlir::jlm::Store>(
+          Builder_->getUnknownLoc(),
+          Builder_->getType<::mlir::rvsdg::MemStateEdgeType>(),
+          getElementPtr,
+          ConvertValue(storeOp.getValueToStore(), valueMap),
+          0,
+          mlir::ValueRange{ newestMemState });
+
+      newestMemState = store.getOutputMemState();
+      MlirOp = store;
       // Change to jlm.store
     }
     else if (auto castOp = mlir::dyn_cast<mlir::memref::CastOp>(op))
     {
+      auto input = ConvertValue(castOp.getOperand(), valueMap);
+      valueMap[castOp.getResult()] = input;
+      MlirOp = nullptr;
       printf("Removing memref.cast\n");
       // Remove
-    }
-    else if (auto cmpOp = mlir::dyn_cast<mlir::arith::CmpFOp>(op))
-    {
-      printf("Keeping arith.cmpf\n");
-      // Might keep
     }
     else if (op.getName().getStringRef() == "polygeist.pointer2memref")
     {
       printf("Removing polygeist.pointer2memref\n");
       // Remove
     }
-    else if (auto cmpOp = mlir::dyn_cast<mlir::arith::CmpIOp>(op))
-    {
-      printf("Keeping arith.cmpi\n");
-      // Might keep
-    }
     else if (auto addressOfOp = mlir::dyn_cast<mlir::LLVM::AddressOfOp>(op))
     {
-      printf("Considering removal of llvm.mlir.addressof\n");
+      auto global = globals[addressOfOp.getGlobalName().str()];
+      valueMap[addressOfOp.getResult()] = global;
+      MlirOp = nullptr;
+      printf("Removing llvm.mlir.addressof\n");
       // Might be able to remove
     }
     else if (auto callOp = mlir::dyn_cast<mlir::func::CallOp>(op))
@@ -368,9 +515,56 @@ struct ImportPolygeistPass
       printf("Converting memref.dealloc to jlm.free\n");
       // Change to jlm.free
     }
-    else if (auto loadOp = mlir::dyn_cast<mlir::LLVM::LoadOp>(op))
+    else if (auto loadOp = mlir::dyn_cast<mlir::memref::LoadOp>(op))
     {
-      printf("Converting llvm.load to jlm.load\n");
+      printf("Converting memref.load to jlm.load\n");
+      auto memrefType = loadOp.getMemRefType();
+      auto nDims = memrefType.getShape().size();
+
+      assert(loadOp.getIndices().size() == nDims);
+
+      mlir::Value currentOutput;
+      size_t stride = 1;
+      for (int i = nDims - 1; i >= 0; i--) {
+        auto index = ConvertValue(loadOp.getIndices()[i], valueMap);
+        auto strideOp = Builder_->create<mlir::arith::ConstantIntOp>(
+            Builder_->getUnknownLoc(),
+            stride,
+            Builder_->getIntegerType(64));
+        auto multiplyOp = Builder_->create<mlir::arith::MulIOp>(
+            Builder_->getUnknownLoc(),
+            Builder_->getType<mlir::IntegerType>(64),
+            index,
+            strideOp);
+        if (i == nDims - 1) {
+          currentOutput = multiplyOp;
+        } else {
+          auto addOp = Builder_->create<mlir::arith::AddIOp>(
+              Builder_->getUnknownLoc(),
+              Builder_->getType<mlir::IntegerType>(64),
+              currentOutput,
+              multiplyOp);
+          currentOutput = addOp;
+        }
+        stride *= memrefType.getShape()[i];
+      }
+      auto getElementPtr = Builder_->create<mlir::LLVM::GEPOp>(
+          Builder_->getUnknownLoc(),
+          Builder_->getType<mlir::LLVM::LLVMPointerType>(),
+          memrefType.getElementType(),
+          ConvertValue(loadOp.getMemRef(), valueMap),
+          currentOutput);
+
+      auto load = Builder_->create<mlir::jlm::Load>(
+          Builder_->getUnknownLoc(),
+          ConvertType(loadOp.getResult().getType()),
+          Builder_->getType<::mlir::rvsdg::MemStateEdgeType>(),
+          getElementPtr,
+          0,
+          mlir::ValueRange{ newestMemState });
+
+      newestMemState = load.getOutputMemState();
+      MlirOp = load;
       // Change to jlm.load
     }
     else if (auto loadOp = mlir::dyn_cast<mlir::memref::LoadOp>(op))
@@ -387,26 +581,20 @@ struct ImportPolygeistPass
         mlir::isa<mlir::arith::ConstantOp>(op) || mlir::isa<mlir::arith::IndexCastOp>(op)
         || mlir::isa<mlir::arith::SIToFPOp>(op) || mlir::isa<mlir::arith::MulIOp>(op)
         || mlir::isa<mlir::arith::DivFOp>(op) || mlir::isa<mlir::arith::AddFOp>(op)
-        || mlir::isa<mlir::arith::SubFOp>(op))
+        || mlir::isa<mlir::arith::SubFOp>(op) || mlir::isa<mlir::math::SqrtOp>(op)
+        || mlir::isa<mlir::arith::CmpFOp>(op) || mlir::isa<mlir::arith::CmpIOp>(op)
+        || mlir::isa<mlir::arith::RemSIOp>(op) || mlir::isa<mlir::arith::RemUIOp>(op)
+        || mlir::isa<mlir::arith::AddIOp>(op) || mlir::isa<mlir::arith::SelectOp>(op)
+        || mlir::isa<mlir::arith::MulFOp>(op)
+    )
     {
-      printf("Keeping arithmetic operation: %s\n", op.getName().getStringRef().data());
+      printf("Keeping operation: %s\n", op.getName().getStringRef().data());
       MlirOp = op.clone();
-    }
-    else if (auto sqrtOp = mlir::dyn_cast<mlir::math::SqrtOp>(op))
-    {
-      printf("Keeping math.sqrt\n");
-      MlirOp = op.clone();
-      // Keep
+      MlirOp->setOperands(inputs);
     }
     else if (auto gepOp = mlir::dyn_cast<mlir::LLVM::GEPOp>(op))
     {
       printf("Keeping llvm.getelementptr\n");
-      MlirOp = op.clone();
-      // Keep
-    }
-    else if (auto remOp = mlir::dyn_cast<mlir::arith::RemSIOp>(op))
-    {
-      printf("Keeping arith.remsi\n");
       MlirOp = op.clone();
       // Keep
     }
@@ -422,21 +610,19 @@ struct ImportPolygeistPass
           Builder_->getStringAttr(funcOp.getName()));
       MlirOp = omegaArgument;
     }
-    else if (auto selectOp = mlir::dyn_cast<mlir::arith::SelectOp>(op))
-    {
-      printf("Maybe converting arith.select to Gamma\n");
-      // Maybe change to Gamma
-    }
     else
     {
       printf("Unhandled operation: %s\n", op.getName().getStringRef().data());
     }
     if (!MlirOp)
     {
-      printf("Unhandled operation: %s\n", op.getName().getStringRef().data());
-      assert(false && "Unhandled operation");
+      printf("Undefined operation: %s\n", op.getName().getStringRef().data());
+      // assert(false && "Unhandled operation");
     }
-    resultBlock.push_back(MlirOp);
+    if (MlirOp)
+    {
+      resultBlock.push_back(MlirOp);
+    }
     return MlirOp;
     // assert(false && "Unhandled operation");
   }
@@ -447,7 +633,8 @@ struct ImportPolygeistPass
     auto omega = Builder_->create<::mlir::rvsdg::OmegaNode>(Builder_->getUnknownLoc());
     auto & omegaBlock = omega.getRegion().emplaceBlock();
 
-    auto region = ConvertRegion(omega.getRegion(), module.getRegion(), false, false);
+    std::unordered_map<mlir::Value, mlir::Value> valueMap;
+    auto region = ConvertRegion(omega.getRegion(), module.getRegion(), false, false, valueMap);
     // auto omegaResult =
     //     Builder_->create<::mlir::rvsdg::OmegaResult>(Builder_->getUnknownLoc(), regionResults);
     // omegaBlock.push_back(omegaResult);
@@ -498,6 +685,8 @@ private:
   bool nestedPMInitialized = false;
   mlir::OpPassManager nestedPM;
   std::map<mlir::Operation *, std::unordered_set<mlir::Value>> operationDependencies;
+  std::map<mlir::Value, mlir::Value> currentDependencies;
+  std::map<std::string, mlir::Value> globals;
   std::unique_ptr<::mlir::OpBuilder> Builder_;
   std::unique_ptr<::mlir::MLIRContext> Context_;
   mlir::Value newestMemState;
