@@ -10,6 +10,7 @@
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Verifier.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
 #include "polygeist/Dialect.h"
@@ -91,9 +92,17 @@ struct ImportPolygeistPass
     sortGlobals(module);
     printf("Converting module\n");
     auto omega = ConvertModule(module);
+
+    if (failed(mlir::verify(omega)))
+    {
+      omega.dump();
+      assert(false && "Omega node verification failed");
+    }
+
     printf("Converted module\n");
     omega.dump();
     printf("Done\n");
+    assert(false && "Omega node verification passed");
 
     // for (auto & [op, dependencies] : operationDependencies)
     // {
@@ -129,6 +138,20 @@ struct ImportPolygeistPass
       }
       return Builder_->getType<mlir::FunctionType>(convertedInputs, convertedOutputs);
     }
+    else if (auto funcType = mlir::dyn_cast<mlir::LLVM::LLVMFunctionType>(type))
+    {
+      auto convertedInputs = std::vector<mlir::Type>();
+      for (auto input : funcType.getParams())
+      {
+        convertedInputs.push_back(ConvertType(input));
+      }
+      auto convertedOutputs = std::vector<mlir::Type>();
+      for (auto output : funcType.getReturnTypes())
+      {
+        convertedOutputs.push_back(ConvertType(output));
+      }
+      return Builder_->getType<mlir::FunctionType>(convertedInputs, convertedOutputs);
+    }
     return type;
   }
 
@@ -154,7 +177,7 @@ struct ImportPolygeistPass
       return it->second;
     }
     printf("Could not find value: \n");
-    value.dump();
+    // value.dump();
   }
 
   mlir::Value
@@ -305,11 +328,23 @@ struct ImportPolygeistPass
           thetaBlockUpperBound);
       thetaBlock.push_back(predicate);
 
+      ::llvm::SmallVector<::mlir::Attribute> mappingVector = {
+        ::mlir::rvsdg::MatchRuleAttr::get(Builder_->getContext(), ::llvm::ArrayRef<int64_t>(0), 0),
+        ::mlir::rvsdg::MatchRuleAttr::get(Builder_->getContext(), ::llvm::ArrayRef<int64_t>(1), 1)
+      };
+
+      auto match = Builder_->create<mlir::rvsdg::Match>(
+          Builder_->getUnknownLoc(),
+          Builder_->getType<mlir::rvsdg::RVSDG_CTRLType>(2),
+          predicate,
+          mlir::ArrayAttr::get(Builder_->getContext(), mappingVector));
+      thetaBlock.push_back(match);
+
       // Create gamma node (if-then-else) for first iteration check
       auto gamma = Builder_->create<mlir::rvsdg::GammaNode>(
           Builder_->getUnknownLoc(),
           thetaOutputs,
-          predicate,
+          match,
           thetaBlock.getArguments(),
           2);
 
@@ -344,7 +379,7 @@ struct ImportPolygeistPass
 
       auto thetaResult = Builder_->create<mlir::rvsdg::ThetaResult>(
           Builder_->getUnknownLoc(),
-          predicate,
+          match,
           thetaBlock.getArguments());
 
       thetaBlock.push_back(thetaResult);
@@ -657,7 +692,7 @@ struct ImportPolygeistPass
     else if (auto addressOfOp = mlir::dyn_cast<mlir::LLVM::AddressOfOp>(op))
     {
       auto global = globals[addressOfOp.getGlobalName().str()];
-      global.dump();
+      // global.dump();
       valueMap[addressOfOp.getResult()] = global;
       MlirOp = nullptr;
       printf("Removing llvm.mlir.addressof\n");
@@ -787,7 +822,7 @@ struct ImportPolygeistPass
     else if (auto loadOp = mlir::dyn_cast<mlir::LLVM::LoadOp>(op))
     {
       printf("Converting llvm.load to jlm.load\n");
-      loadOp.getOperand().dump();
+      // loadOp.getOperand().dump();
       auto load = Builder_->create<mlir::jlm::Load>(
           Builder_->getUnknownLoc(),
           ConvertType(loadOp.getResult().getType()),
@@ -850,9 +885,10 @@ struct ImportPolygeistPass
 
     std::unordered_map<mlir::Value, mlir::Value> valueMap;
     auto region = ConvertRegion(omega.getRegion(), module.getRegion(), false, false, valueMap);
-    // auto omegaResult =
-    //     Builder_->create<::mlir::rvsdg::OmegaResult>(Builder_->getUnknownLoc(), regionResults);
-    // omegaBlock.push_back(omegaResult);
+    auto omegaResult = Builder_->create<::mlir::rvsdg::OmegaResult>(
+        Builder_->getUnknownLoc(),
+        mlir::ValueRange{}); // TODO: OmegaResult
+    omegaBlock.push_back(omegaResult);
 
     return omega;
   }
