@@ -1,7 +1,5 @@
 #include "JLM/JLMDialect.h"
 #include "JLM/JLMOps.h"
-#include "polygeist/Dialect.h"
-#include "polygeist/Ops.h"
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 #include "mlir/Dialect/Affine/IR/AffineOps.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
@@ -14,6 +12,8 @@
 #include "mlir/IR/PatternMatch.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/GreedyPatternRewriteDriver.h"
+#include "polygeist/Dialect.h"
+#include "polygeist/Ops.h"
 #include "RVSDG/RVSDGDialect.h"
 #include "RVSDG/RVSDGPasses.h"
 #include <mlir/Pass/PassManager.h>
@@ -89,7 +89,6 @@ struct ImportPolygeistPass
     getUsedValues(module);
     printf("Sorting globals\n");
     sortGlobals(module);
-    // module.dump();
     printf("Converting module\n");
     auto omega = ConvertModule(module);
     printf("Converted module\n");
@@ -304,6 +303,7 @@ struct ImportPolygeistPass
           mlir::arith::CmpIPredicate::slt,
           thetaBlockInductionVar,
           thetaBlockUpperBound);
+      thetaBlock.push_back(predicate);
 
       // Create gamma node (if-then-else) for first iteration check
       auto gamma = Builder_->create<mlir::rvsdg::GammaNode>(
@@ -340,6 +340,8 @@ struct ImportPolygeistPass
       gammaBlock.push_back(gammaResult);
       dummyBlock.push_back(dummyResult);
 
+      thetaBlock.push_back(gamma);
+
       auto thetaResult = Builder_->create<mlir::rvsdg::ThetaResult>(
           Builder_->getUnknownLoc(),
           predicate,
@@ -354,7 +356,7 @@ struct ImportPolygeistPass
       printf("Converting scf.if to Gamma\n");
 
       llvm::SmallVector<mlir::Value> gammaArgs = { inputs.begin(), inputs.end() };
-      llvm::SmallVector<mlir::Value> gammaArgsOld = {ifOp.getOperand()};
+      llvm::SmallVector<mlir::Value> gammaArgsOld = { ifOp.getOperand() };
       for (auto dependency : operationDependencies[&op])
       {
         gammaArgs.push_back(ConvertValue(dependency, valueMap));
@@ -376,7 +378,6 @@ struct ImportPolygeistPass
           ConvertValue(ifOp.getCondition().cast<mlir::Value>(), valueMap),
           gammaArgs,
           2);
-
 
       auto & ifBlock = gamma.getRegion(0).emplaceBlock();
       auto & elseBlock = gamma.getRegion(1).emplaceBlock();
@@ -425,33 +426,48 @@ struct ImportPolygeistPass
     }
     else if (auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>(op))
     {
-      printf("Converting func.func to Lambda\n");
+      printf("Converting func.func to Lambda or OmegaArgument\n");
 
-      ::llvm::SmallVector<::mlir::NamedAttribute> attributes;
-      auto symbolName = Builder_->getNamedAttr(
-          Builder_->getStringAttr("sym_name"),
-          Builder_->getStringAttr(funcOp.getName()));
-      attributes.push_back(symbolName);
-      auto linkage = Builder_->getNamedAttr(
-          Builder_->getStringAttr("linkage"),
-          Builder_->getStringAttr("external_linkage"));
-      attributes.push_back(linkage);
+      if (funcOp.empty())
+      {
+        auto type = ConvertType(funcOp.getFunctionType());
+        auto omegaArgument = Builder_->create<::mlir::rvsdg::OmegaArgument>(
+            Builder_->getUnknownLoc(),
+            type,
+            type,
+            Builder_->getStringAttr("external_linkage"),
+            Builder_->getStringAttr(funcOp.getName()));
+        globals[funcOp.getName().str()] = omegaArgument;
+        MlirOp = omegaArgument;
+      }
+      else
+      {
+        ::llvm::SmallVector<::mlir::NamedAttribute> attributes;
+        auto symbolName = Builder_->getNamedAttr(
+            Builder_->getStringAttr("sym_name"),
+            Builder_->getStringAttr(funcOp.getName()));
+        attributes.push_back(symbolName);
+        auto linkage = Builder_->getNamedAttr(
+            Builder_->getStringAttr("linkage"),
+            Builder_->getStringAttr("external_linkage"));
+        attributes.push_back(linkage);
 
-      auto lambda = Builder_->create<::mlir::rvsdg::LambdaNode>(
-          Builder_->getUnknownLoc(),
-          ConvertType(funcOp.getFunctionType()),
-          inputs,
-          ::llvm::ArrayRef<::mlir::NamedAttribute>(attributes));
-      // resultBlock.push_back(lambda);
+        auto lambda = Builder_->create<::mlir::rvsdg::LambdaNode>(
+            Builder_->getUnknownLoc(),
+            ConvertType(funcOp.getFunctionType()),
+            inputs,
+            ::llvm::ArrayRef<::mlir::NamedAttribute>(attributes));
 
-      auto & lambdaBlock = lambda.getRegion().emplaceBlock();
-      auto regionResults =
-          ConvertRegion(lambda.getRegion(), funcOp.getRegion(), true, true, valueMap);
-      // auto lambdaResult =
-      //     Builder_->create<::mlir::rvsdg::LambdaResult>(Builder_->getUnknownLoc(), regionResults);
-      // lambdaBlock.push_back(lambdaResult);
-      globals[funcOp.getName().str()] = lambda;
-      MlirOp = lambda;
+        auto & lambdaBlock = lambda.getRegion().emplaceBlock();
+        auto regionResults =
+            ConvertRegion(lambda.getRegion(), funcOp.getRegion(), true, true, valueMap);
+        // auto lambdaResult =
+        //     Builder_->create<::mlir::rvsdg::LambdaResult>(Builder_->getUnknownLoc(),
+        //     regionResults);
+        // lambdaBlock.push_back(lambdaResult);
+        globals[funcOp.getName().str()] = lambda;
+        MlirOp = lambda;
+      }
     }
     else if (auto globalOp = mlir::dyn_cast<mlir::LLVM::GlobalOp>(op))
     {
@@ -537,6 +553,7 @@ struct ImportPolygeistPass
           Builder_->getUnknownLoc(),
           elementSize * nElements,
           Builder_->getIntegerType(64));
+      resultBlock.push_back(sizeOp);
       auto malloc = Builder_->create<mlir::jlm::Malloc>(
           Builder_->getUnknownLoc(),
           Builder_->getType<::mlir::LLVM::LLVMPointerType>(),
@@ -547,6 +564,7 @@ struct ImportPolygeistPass
           Builder_->getUnknownLoc(),
           Builder_->getType<::mlir::rvsdg::MemStateEdgeType>(),
           mlir::ValueRange{ mallocMemState, newestMemState });
+      resultBlock.push_back(memorystatemerge);
       newestMemState = memorystatemerge.getOutput();
       MlirOp = malloc;
       printf("Converting memref.alloc to jlm.malloc\n");
@@ -569,11 +587,13 @@ struct ImportPolygeistPass
             Builder_->getUnknownLoc(),
             stride,
             Builder_->getIntegerType(64));
+        resultBlock.push_back(strideOp);
         auto multiplyOp = Builder_->create<mlir::arith::MulIOp>(
             Builder_->getUnknownLoc(),
             Builder_->getType<mlir::IntegerType>(64),
             index,
             strideOp);
+        resultBlock.push_back(multiplyOp);
         if (i == nDims - 1)
         {
           currentOutput = multiplyOp;
@@ -585,6 +605,7 @@ struct ImportPolygeistPass
               Builder_->getType<mlir::IntegerType>(64),
               currentOutput,
               multiplyOp);
+          resultBlock.push_back(addOp);
           currentOutput = addOp;
         }
         stride *= memrefType.getShape()[i];
@@ -595,6 +616,7 @@ struct ImportPolygeistPass
           memrefType.getElementType(),
           ConvertValue(storeOp.getMemRef(), valueMap),
           currentOutput);
+      resultBlock.push_back(getElementPtr);
 
       auto store = Builder_->create<mlir::jlm::Store>(
           Builder_->getUnknownLoc(),
@@ -692,7 +714,7 @@ struct ImportPolygeistPass
       printf("Converting memref.dealloc to jlm.free\n");
       auto free = Builder_->create<mlir::jlm::Free>(
           Builder_->getUnknownLoc(),
-          llvm::SmallVector<mlir::Type>{Builder_->getType<mlir::rvsdg::MemStateEdgeType>()},
+          llvm::SmallVector<mlir::Type>{ Builder_->getType<mlir::rvsdg::MemStateEdgeType>() },
           Builder_->getType<mlir::rvsdg::IOStateEdgeType>(),
           ConvertValue(deallocOp.getOperand(), valueMap),
           mlir::ValueRange{ newestMemState },
@@ -719,11 +741,13 @@ struct ImportPolygeistPass
             Builder_->getUnknownLoc(),
             stride,
             Builder_->getIntegerType(64));
+        resultBlock.push_back(strideOp);
         auto multiplyOp = Builder_->create<mlir::arith::MulIOp>(
             Builder_->getUnknownLoc(),
             Builder_->getType<mlir::IntegerType>(64),
             index,
             strideOp);
+        resultBlock.push_back(multiplyOp);
         if (i == nDims - 1)
         {
           currentOutput = multiplyOp;
@@ -735,6 +759,7 @@ struct ImportPolygeistPass
               Builder_->getType<mlir::IntegerType>(64),
               currentOutput,
               multiplyOp);
+          resultBlock.push_back(addOp);
           currentOutput = addOp;
         }
         stride *= memrefType.getShape()[i];
@@ -745,6 +770,7 @@ struct ImportPolygeistPass
           memrefType.getElementType(),
           ConvertValue(loadOp.getMemRef(), valueMap),
           currentOutput);
+      resultBlock.push_back(getElementPtr);
 
       auto load = Builder_->create<mlir::jlm::Load>(
           Builder_->getUnknownLoc(),
@@ -780,9 +806,8 @@ struct ImportPolygeistPass
       {
         returnValues.push_back(ConvertValue(operand, valueMap));
       }
-      auto lambdaResult = Builder_->create<mlir::rvsdg::LambdaResult>(
-          Builder_->getUnknownLoc(),
-          returnValues);
+      auto lambdaResult =
+          Builder_->create<mlir::rvsdg::LambdaResult>(Builder_->getUnknownLoc(), returnValues);
       MlirOp = lambdaResult;
     }
     else if (
