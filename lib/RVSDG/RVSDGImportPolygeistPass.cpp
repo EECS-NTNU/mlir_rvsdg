@@ -85,13 +85,16 @@ struct ImportPolygeistPass
     preTransformPm.addPass(mlir::createLowerAffinePass());
     preTransformPm.run(module);
 
-    module.dump();
     printf("Getting used values\n");
     getUsedValues(module);
     printf("Sorting globals\n");
     sortGlobals(module);
+    // module.dump();
     printf("Converting module\n");
-    ConvertModule(module);
+    auto omega = ConvertModule(module);
+    printf("Converted module\n");
+    omega.dump();
+    printf("Done\n");
 
     // for (auto & [op, dependencies] : operationDependencies)
     // {
@@ -216,7 +219,7 @@ struct ImportPolygeistPass
     {
       auto global = globals[globalName];
       printf("Adding global:%s\n", globalName.c_str());
-      global.dump();
+      // global.dump();
       resultBlock.addArgument(ConvertType(global.getType()), Builder_->getUnknownLoc());
       nameMap[globalName] = resultBlock.getArguments().back();
     }
@@ -225,7 +228,7 @@ struct ImportPolygeistPass
     // hash map for easy lookup of corresponding MLIR operation
     for (auto & op : sourceRegion.getOps())
     {
-      op.dump();
+      // op.dump();
       auto inputs = GetConvertedInputs(op, valueMap);
 
       auto convertedOp = ConvertOperation(op, resultBlock, valueMap, nameMap, inputs);
@@ -346,8 +349,77 @@ struct ImportPolygeistPass
 
       MlirOp = theta;
     }
+    else if (auto ifOp = mlir::dyn_cast<mlir::scf::IfOp>(op))
+    {
+      printf("Converting scf.if to Gamma\n");
+
+      llvm::SmallVector<mlir::Value> gammaArgs = { inputs.begin(), inputs.end() };
+      llvm::SmallVector<mlir::Value> gammaArgsOld = {ifOp.getOperand()};
+      for (auto dependency : operationDependencies[&op])
+      {
+        gammaArgs.push_back(ConvertValue(dependency, valueMap));
+        gammaArgsOld.push_back(dependency);
+      }
+      gammaArgs.push_back(newestMemState);
+      gammaArgs.push_back(newestIOState);
+
+      llvm::SmallVector<mlir::Type> gammaOutputs = {};
+      for (auto arg : gammaArgs)
+      {
+        gammaOutputs.push_back(arg.getType());
+      }
+
+      llvm::SmallVector<mlir::NamedAttribute> attributes = {};
+      auto gamma = Builder_->create<mlir::rvsdg::GammaNode>(
+          Builder_->getUnknownLoc(),
+          gammaOutputs,
+          ConvertValue(ifOp.getCondition().cast<mlir::Value>(), valueMap),
+          gammaArgs,
+          2);
+
+
+      auto & ifBlock = gamma.getRegion(0).emplaceBlock();
+      auto & elseBlock = gamma.getRegion(1).emplaceBlock();
+
+      for (auto arg : gamma.getOperands())
+      {
+        ifBlock.addArgument(arg.getType(), Builder_->getUnknownLoc());
+        elseBlock.addArgument(arg.getType(), Builder_->getUnknownLoc());
+      }
+
+      auto nGammaArgs = gammaArgs.size();
+      auto gammaMemState = gamma.getOperands()[nGammaArgs - 2];
+      auto gammaIOState = gamma.getOperands()[nGammaArgs - 1];
+      newestMemState = gammaMemState;
+      newestIOState = gammaIOState;
+
+      auto ifBlockArgsValueMap = std::unordered_map<mlir::Value, mlir::Value>();
+      auto elseBlockArgsValueMap = std::unordered_map<mlir::Value, mlir::Value>();
+      for (size_t i = 0; i < gammaArgsOld.size(); i++)
+      {
+        ifBlockArgsValueMap[gammaArgsOld[i]] = ifBlock.getArgument(i);
+        elseBlockArgsValueMap[gammaArgsOld[i]] = elseBlock.getArgument(i);
+      }
+
+      ConvertRegion(gamma.getRegion(0), ifOp.getRegion(0), false, false, ifBlockArgsValueMap);
+      ConvertRegion(gamma.getRegion(1), ifOp.getRegion(1), false, false, elseBlockArgsValueMap);
+
+      auto ifResult = Builder_->create<mlir::rvsdg::GammaResult>(
+          Builder_->getUnknownLoc(),
+          ifBlock.getArguments());
+
+      auto elseResult = Builder_->create<mlir::rvsdg::GammaResult>(
+          Builder_->getUnknownLoc(),
+          elseBlock.getArguments());
+
+      ifBlock.push_back(ifResult);
+      elseBlock.push_back(elseResult);
+
+      MlirOp = gamma;
+    }
     else if (auto yieldOp = mlir::dyn_cast<mlir::scf::YieldOp>(op))
     {
+      assert(yieldOp.getOperands().size() == 0 && "Yield op with operands is not supported");
       return nullptr; // TODO: Thetaresult should be created here, but none of the loops actually
                       // yield anything
     }
@@ -375,9 +447,10 @@ struct ImportPolygeistPass
       auto & lambdaBlock = lambda.getRegion().emplaceBlock();
       auto regionResults =
           ConvertRegion(lambda.getRegion(), funcOp.getRegion(), true, true, valueMap);
-      auto lambdaResult =
-          Builder_->create<::mlir::rvsdg::LambdaResult>(Builder_->getUnknownLoc(), regionResults);
-      lambdaBlock.push_back(lambdaResult);
+      // auto lambdaResult =
+      //     Builder_->create<::mlir::rvsdg::LambdaResult>(Builder_->getUnknownLoc(), regionResults);
+      // lambdaBlock.push_back(lambdaResult);
+      globals[funcOp.getName().str()] = lambda;
       MlirOp = lambda;
     }
     else if (auto globalOp = mlir::dyn_cast<mlir::LLVM::GlobalOp>(op))
@@ -614,11 +687,21 @@ struct ImportPolygeistPass
       MlirOp = call;
       // Change to jlm.call
     }
-    // else if (auto deallocOp = mlir::dyn_cast<mlir::memref::DeallocOp>(op))
-    // {
-    //   printf("Converting memref.dealloc to jlm.free\n");
-    //   // Change to jlm.free
-    // }
+    else if (auto deallocOp = mlir::dyn_cast<mlir::memref::DeallocOp>(op))
+    {
+      printf("Converting memref.dealloc to jlm.free\n");
+      auto free = Builder_->create<mlir::jlm::Free>(
+          Builder_->getUnknownLoc(),
+          llvm::SmallVector<mlir::Type>{Builder_->getType<mlir::rvsdg::MemStateEdgeType>()},
+          Builder_->getType<mlir::rvsdg::IOStateEdgeType>(),
+          ConvertValue(deallocOp.getOperand(), valueMap),
+          mlir::ValueRange{ newestMemState },
+          newestIOState);
+      newestMemState = free.getOutputMemStates()[0];
+      newestIOState = free.getOutputIoState();
+      MlirOp = free;
+      // Change to jlm.free
+    }
     else if (auto loadOp = mlir::dyn_cast<mlir::memref::LoadOp>(op))
     {
       printf("Converting memref.load to jlm.load\n");
@@ -690,11 +773,18 @@ struct ImportPolygeistPass
       newestMemState = load.getOutputMemState();
       MlirOp = load;
     }
-    // else if (auto returnOp = mlir::dyn_cast<mlir::func::ReturnOp>(op))
-    // {
-    //   printf("Converting return to LambdaResult\n");
-    //   // Change to LambdaResult
-    // }
+    else if (auto returnOp = mlir::dyn_cast<mlir::func::ReturnOp>(op))
+    {
+      llvm::SmallVector<mlir::Value> returnValues = {};
+      for (auto operand : returnOp.getOperands())
+      {
+        returnValues.push_back(ConvertValue(operand, valueMap));
+      }
+      auto lambdaResult = Builder_->create<mlir::rvsdg::LambdaResult>(
+          Builder_->getUnknownLoc(),
+          returnValues);
+      MlirOp = lambdaResult;
+    }
     else if (
         mlir::isa<mlir::arith::ConstantOp>(op) || mlir::isa<mlir::arith::IndexCastOp>(op)
         || mlir::isa<mlir::arith::SIToFPOp>(op) || mlir::isa<mlir::arith::MulIOp>(op)
