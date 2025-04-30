@@ -268,14 +268,14 @@ struct ImportPolygeistPass
       printf("Converting scf.for to Theta\n");
 
       llvm::SmallVector<mlir::Value> thetaArgs = { inputs.begin(), inputs.end() };
-      llvm::SmallVector<mlir::Value> thetaArgsOld = { forOp.getOperands().begin(),
+      llvm::SmallVector<mlir::Value> thetaBlockArgsOld = { forOp.getOperands().begin(),
                                                       forOp.getOperands().end() };
       for (auto dependency : operationDependencies[&op])
       {
         thetaArgs.push_back(ConvertValue(dependency, valueMap));
-        thetaArgsOld.push_back(dependency);
+        thetaBlockArgsOld.push_back(dependency);
       }
-      thetaArgsOld[0] = forOp.getInductionVar();
+      thetaBlockArgsOld[0] = forOp.getInductionVar(); // These are used for block arguments and need the induction var rather than the start value
 
       auto thetaNameDependenciesSet = nameDependencies[&op];
       auto thetaNameDependencies = llvm::SmallVector<std::string>(
@@ -356,9 +356,9 @@ struct ImportPolygeistPass
       }
       auto blockArgsValueMap = std::unordered_map<mlir::Value, mlir::Value>();
       auto blockArgsNameMap = std::unordered_map<std::string, mlir::Value>();
-      for (size_t i = 0; i < thetaArgsOld.size(); i++)
+      for (size_t i = 0; i < thetaBlockArgsOld.size(); i++)
       {
-        blockArgsValueMap[thetaArgsOld[i]] = gammaBlock.getArgument(i);
+        blockArgsValueMap[thetaBlockArgsOld[i]] = gammaBlock.getArgument(i);
       }
       for (size_t i = nameDependenciesStartIndex; i < thetaArgs.size() - 2; i++)
       {
@@ -366,6 +366,8 @@ struct ImportPolygeistPass
             gammaBlock.getArgument(i);
       }
 
+      newestMemState = gammaBlock.getArgument(gammaBlock.getArguments().size() - 2);
+      newestIOState = gammaBlock.getArgument(gammaBlock.getArguments().size() - 1);
       ConvertRegion(gamma.getRegion(0), forOp.getRegion(), blockArgsValueMap, blockArgsNameMap);
 
       auto gammaResult = Builder_->create<mlir::rvsdg::GammaResult>(
@@ -387,6 +389,9 @@ struct ImportPolygeistPass
           thetaBlock.getArguments());
 
       thetaBlock.push_back(thetaResult);
+
+      newestMemState = theta.getOutputs()[theta.getOutputs().size() - 2];
+      newestIOState = theta.getOutputs()[theta.getOutputs().size() - 1];
 
       resultBlock.push_back(theta);
       return theta;
@@ -494,6 +499,9 @@ struct ImportPolygeistPass
       ifBlock.push_back(ifResult);
       elseBlock.push_back(elseResult);
 
+      newestMemState = gamma.getOutputs()[gamma.getOutputs().size() - 2];
+      newestIOState = gamma.getOutputs()[gamma.getOutputs().size() - 1];
+
       resultBlock.push_back(gamma);
       return gamma;
     }
@@ -570,7 +578,7 @@ struct ImportPolygeistPass
         }
 
         lambdaBlock.addArgument(Builder_->getType<mlir::rvsdg::MemStateEdgeType>(), Builder_->getUnknownLoc());
-        newestMemState = lambdaBlock.getArguments().back();
+        newestMemState = lambdaBlock.getArguments().back(); // These should not need to be reset, as the func ops are located in the module region, where there are no memstates or iostates
         lambdaBlock.addArgument(Builder_->getType<mlir::rvsdg::IOStateEdgeType>(), Builder_->getUnknownLoc());
         newestIOState = lambdaBlock.getArguments().back();
 
@@ -826,7 +834,7 @@ struct ImportPolygeistPass
       newestIOState = call.getOutputIoState();
       newestMemState = call.getOutputMemState();
       resultBlock.push_back(call);
-      return nullptr;
+      return call;
       // Change to jlm.call
     }
     else if (auto callOp = mlir::dyn_cast<mlir::LLVM::CallOp>(op))
@@ -984,35 +992,7 @@ struct ImportPolygeistPass
       printf("Unhandled operation: %s\n", op.getName().getStringRef().data());
       assert(false && "Unhandled operation");
     }
-    // assert(false && "Unhandled operation");
   }
-
-  // void
-  // PopulateRegionArgs(mlir::Region newRegion, mlir::Operation * oldOp,
-  // std::unordered_map<mlir::Value, mlir::Value> & valueMap, std::unordered_map<std::string,
-  // mlir::Value> & nameMap)
-  // {
-  //     llvm::SmallVector<mlir::Value> oldArgs = { oldOp->getOperands().begin(),
-  //     oldOp->getOperands().end() }; // Old op args llvm::SmallVector<mlir::Value> newArgs = {};
-  //     // Op args for (auto arg : oldArgs){
-  //       newArgs.push_back(ConvertValue(arg, valueMap));
-  //     }
-  //     for (auto dependency : operationDependencies[oldOp]) // Op Dependencies
-  //     {
-  //       newArgs.push_back(ConvertValue(dependency, valueMap));
-  //       oldArgs.push_back(dependency);
-  //     }
-
-  //     auto nameDependenciesSet = nameDependencies[oldOp];
-  //     auto nameDependencies = llvm::SmallVector<std::string>(nameDependenciesSet.begin(),
-  //     nameDependenciesSet.end()); auto nameDependenciesStartIndex = newArgs.size(); for (auto
-  //     name : nameDependencies)
-  //     {
-  //       newArgs.push_back(ConvertName(name, nameMap));
-  //     }
-  //     newArgs.push_back(newestMemState);
-  //     newArgs.push_back(newestIOState);
-  // }
 
   mlir::rvsdg::OmegaNode
   ConvertModule(mlir::ModuleOp module)
