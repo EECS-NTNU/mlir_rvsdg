@@ -340,17 +340,24 @@ struct ImportPolygeistPass
     {
       printf("Converting scf.for to Theta\n");
 
-      llvm::SmallVector<mlir::Value> thetaArgs = { inputs.begin(), inputs.end() };
-      llvm::SmallVector<mlir::Value> thetaBlockArgsOld = { forOp.getOperands().begin(),
-                                                           forOp.getOperands().end() };
+      llvm::SmallVector<mlir::Value> thetaArgs = {
+        std::next(inputs.begin(), 3),
+        inputs.end()
+      }; // The actual outputs of the loop need to be placed first
+      thetaArgs.push_back(inputs[0]);
+      thetaArgs.push_back(inputs[1]);
+      thetaArgs.push_back(inputs[2]);
+      llvm::SmallVector<mlir::Value> thetaBlockArgsOld = { forOp.getRegionIterArgs().begin(),
+                                                           forOp.getRegionIterArgs().end() };
+      thetaBlockArgsOld.push_back(forOp.getInductionVar());
+      thetaBlockArgsOld.push_back(forOp.getUpperBound());
+      thetaBlockArgsOld.push_back(forOp.getStep());
+
       for (auto dependency : operationDependencies[&op])
       {
         thetaArgs.push_back(ConvertValue(dependency, valueMap));
         thetaBlockArgsOld.push_back(dependency);
       }
-      thetaBlockArgsOld[0] =
-          forOp.getInductionVar(); // These are used for block arguments and need the induction var
-                                   // rather than the start value
 
       auto thetaNameDependenciesSet = nameDependencies[&op];
       auto thetaNameDependencies = llvm::SmallVector<std::string>(
@@ -390,9 +397,9 @@ struct ImportPolygeistPass
       newestMemState = thetaBlockMemState;
       newestIOState = thetaBlockIOState;
 
-      auto thetaBlockInductionVar = thetaBlock.getArgument(0);
-      auto thetaBlockUpperBound = thetaBlock.getArgument(1);
-      auto thetaBlockStep = thetaBlock.getArgument(2);
+      auto thetaBlockInductionVar = thetaBlock.getArgument(forOp.getNumRegionIterArgs());
+      auto thetaBlockUpperBound = thetaBlock.getArgument(forOp.getNumRegionIterArgs() + 1);
+      auto thetaBlockStep = thetaBlock.getArgument(forOp.getNumRegionIterArgs() + 2);
 
       auto predicate = builder.create<mlir::arith::CmpIOp>(
           builder.getUnknownLoc(),
@@ -450,15 +457,10 @@ struct ImportPolygeistPass
           blockArgsNameMap,
           builder);
 
-      auto gammaResult = builder.create<mlir::rvsdg::GammaResult>(
-          builder.getUnknownLoc(),
-          gammaBlock.getArguments());
-
       auto dummyResult = builder.create<mlir::rvsdg::GammaResult>(
           builder.getUnknownLoc(),
           dummyBlock.getArguments());
 
-      gammaBlock.push_back(gammaResult);
       dummyBlock.push_back(dummyResult);
 
       thetaBlock.push_back(gamma);
@@ -608,10 +610,26 @@ struct ImportPolygeistPass
         resultBlock.push_back(gammaResult);
         return gammaResult;
       }
-      assert(
-          yieldOp.getOperands().size() == 0 && "Yield in scf.for with operands is not supported");
-      return nullptr; // TODO: Thetaresult should be created here, but none of the loops actually
-                      // yield anything
+      else if (auto forOp = mlir::dyn_cast<mlir::scf::ForOp>(yieldOp->getParentOp()))
+      {
+        auto gamma = mlir::dyn_cast<mlir::rvsdg::GammaNode>(resultBlock.getParentOp());
+        auto results = llvm::SmallVector<mlir::Value>();
+        auto nYieldedValues = yieldOp.getOperands().size();
+        for (auto result : yieldOp.getOperands())
+        {
+          results.push_back(ConvertValue(result, valueMap));
+        }
+        for (size_t i = nYieldedValues; i < gamma.getNumResults(); i++)
+        {
+          results.push_back(resultBlock.getArgument(i));
+        }
+        auto gammaResult =
+            builder.create<mlir::rvsdg::GammaResult>(builder.getUnknownLoc(), results);
+        resultBlock.push_back(gammaResult);
+        return gammaResult;
+      }
+      assert(false && "Yield in unsupported operation");
+      return nullptr; 
     }
     else if (auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>(op))
     {
