@@ -121,6 +121,7 @@ struct ImportPolygeistPass
     if (failed(mlir::verify(module)))
     {
       llvm::errs() << "Module verification failed after adding omega\n";
+      module.dump();
       signalPassFailure();
       return;
     }
@@ -500,10 +501,12 @@ struct ImportPolygeistPass
       gammaArgs.push_back(newestIOState);
 
       llvm::SmallVector<mlir::Type> gammaOutputs = {};
-      for (auto arg : gammaArgs)
+      for (auto result : ifOp.getResults())
       {
-        gammaOutputs.push_back(arg.getType());
+        gammaOutputs.push_back(ConvertType(result.getType(), builder));
       }
+      gammaOutputs.push_back(newestMemState.getType());
+      gammaOutputs.push_back(newestIOState.getType());
 
       ::llvm::SmallVector<::mlir::Attribute> mappingVector = {
         ::mlir::rvsdg::MatchRuleAttr::get(builder.getContext(), ::llvm::ArrayRef<int64_t>(0), 0),
@@ -566,22 +569,21 @@ struct ImportPolygeistPass
 
       newestMemState = elseBlock.getArguments()[gammaBlockMemStateIndex];
       newestIOState = elseBlock.getArguments()[gammaBlockIOStateIndex];
-      ConvertRegion(
-          gamma.getRegion(1),
-          ifOp.getRegion(1),
-          elseBlockArgsValueMap,
-          elseBlockArgsNameMap,
-          builder);
-
-      auto ifResult =
-          builder.create<mlir::rvsdg::GammaResult>(builder.getUnknownLoc(), ifBlock.getArguments());
-
-      auto elseResult = builder.create<mlir::rvsdg::GammaResult>(
-          builder.getUnknownLoc(),
-          elseBlock.getArguments());
-
-      ifBlock.push_back(ifResult);
-      elseBlock.push_back(elseResult);
+      if (!ifOp.getElseRegion().hasOneBlock())
+      {
+        elseBlock.push_back(builder.create<mlir::rvsdg::GammaResult>(
+            builder.getUnknownLoc(),
+            mlir::ValueRange({ newestMemState, newestIOState })));
+      }
+      else
+      {
+        ConvertRegion(
+            gamma.getRegion(1),
+            ifOp.getRegion(1),
+            elseBlockArgsValueMap,
+            elseBlockArgsNameMap,
+            builder);
+      }
 
       newestMemState = gamma.getOutputs()[gamma.getOutputs().size() - 2];
       newestIOState = gamma.getOutputs()[gamma.getOutputs().size() - 1];
@@ -589,9 +591,25 @@ struct ImportPolygeistPass
       resultBlock.push_back(gamma);
       return gamma;
     }
+
     else if (auto yieldOp = mlir::dyn_cast<mlir::scf::YieldOp>(op))
     {
-      assert(yieldOp.getOperands().size() == 0 && "Yield op with operands is not supported");
+      if (auto ifOp = mlir::dyn_cast<mlir::scf::IfOp>(yieldOp->getParentOp()))
+      {
+        auto results = llvm::SmallVector<mlir::Value>();
+        for (auto result : yieldOp.getOperands())
+        {
+          results.push_back(ConvertValue(result, valueMap));
+        }
+        results.push_back(newestMemState);
+        results.push_back(newestIOState);
+        auto gammaResult =
+            builder.create<mlir::rvsdg::GammaResult>(builder.getUnknownLoc(), results);
+        resultBlock.push_back(gammaResult);
+        return gammaResult;
+      }
+      assert(
+          yieldOp.getOperands().size() == 0 && "Yield in scf.for with operands is not supported");
       return nullptr; // TODO: Thetaresult should be created here, but none of the loops actually
                       // yield anything
     }
