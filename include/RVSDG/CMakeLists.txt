@@ -41,8 +41,8 @@ add_dependencies(mlir-headers MLIRRVSDGPassIncGen)
 
 set(LLVM_TARGET_DEFINITIONS RVSDGPatterns.td)
 mlir_tablegen(Patterns.h.inc -gen-rewriters 
-              -I${POLYGEIST_SOURCE_DIR}/include
-              -I${POLYGEIST_SOURCE_DIR}/include/polygeist)
+	-I${PROJECT_SOURCE_DIR}/include
+	-I${PROJECT_SOURCE_DIR}/include/polygeist)
 add_public_tablegen_target(MLIRRVSDGPatternsIncGen)
 add_dependencies(mlir-headers MLIRRVSDGPatternsIncGen)
 

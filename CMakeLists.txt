@@ -8,35 +8,10 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lstdc++")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Polygeist configuration - must come before LLVM/MLIR
-set(POLYGEIST_SOURCE_DIR "/home/halvor/Polygeist")
-set(POLYGEIST_BUILD_DIR "${POLYGEIST_SOURCE_DIR}/build")
-
-  set(LLVM_DIR "${POLYGEIST_BUILD_DIR}/lib/cmake/llvm")
-  message(STATUS "LLVM_DIR not explicitly defined. Using Polygeist's LLVM at ${LLVM_DIR}")
-
-  set(MLIR_DIR "${POLYGEIST_BUILD_DIR}/lib/cmake/mlir")
-  message(STATUS "MLIR_DIR not explicitly defined. Using Polygeist's MLIR at ${MLIR_DIR}")
-
 find_package(MLIR REQUIRED CONFIG)
 
 message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-
-# Add Polygeist libraries
-add_library(MLIRPolygeist STATIC IMPORTED)
-set_target_properties(MLIRPolygeist PROPERTIES
-    IMPORTED_LOCATION "${POLYGEIST_BUILD_DIR}/lib/libMLIRPolygeist.a"
-)
-
-add_library(MLIRPolygeistTransforms STATIC IMPORTED)
-set_target_properties(MLIRPolygeistTransforms PROPERTIES
-    IMPORTED_LOCATION "${POLYGEIST_BUILD_DIR}/lib/libMLIRPolygeistTransforms.a"
-)
-
-# Add Polygeist include directories
-# include_directories(${POLYGEIST_BUILD_DIR}/include)
-# include_directories(${POLYGEIST_SOURCE_DIR}/include)
 
 set(LLVM_RUNTIME_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/bin)
 set(LLVM_LIBRARY_OUTPUT_INTDIR ${CMAKE_BINARY_DIR}/lib)
@@ -56,8 +31,6 @@ endif()
 
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
-include_directories(${POLYGEIST_SOURCE_DIR}/include)
-include_directories(${POLYGEIST_BUILD_DIR}/tools/polygeist/include)
 include_directories(${PROJECT_SOURCE_DIR}/include)
 include_directories(${PROJECT_BINARY_DIR}/include)
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
