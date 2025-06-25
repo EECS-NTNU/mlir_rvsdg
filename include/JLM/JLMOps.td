@@ -24,10 +24,10 @@ def JLM_Load: JLM_Op<"load", []> {
 
     let results = (outs
         AnyType:$output,
-        RVSDG_MemState:$outputMemState
+        Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict $pointer `:` type($pointer) `(` $inputMemStates `)` `->` type($output) `,` type($outputMemState)";
+    let assemblyFormat = "attr-dict $pointer `:` type($pointer) `(` $inputMemStates `)` `->` type($output) `,` type($outputMemStates)";
     let hasVerifier = 1;
 }
 
@@ -45,10 +45,10 @@ def JLM_Store: JLM_Op<"store"> {
     );
 
     let results = (outs
-        RVSDG_MemState:$outputMemState
+        Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict `(` $pointer `:` type($pointer) `,` $value `:` type($value) `)` `(` $inputMemStates `)` `->` type($outputMemState)";
+    let assemblyFormat = "attr-dict `(` $pointer `:` type($pointer) `,` $value `:` type($value) `)` `(` $inputMemStates `)` `->` type($outputMemStates)";
     let hasVerifier = 1;
 }
 
@@ -182,6 +182,24 @@ def JLM_Undef: JLM_Op<"undef"> {
 
     let assemblyFormat = "attr-dict `:` type($output)";
 }
+
+def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
+    let summary = "Constant data array operation";
+    let description = [{
+        Constant data array operation.
+    }];
+
+    let arguments = (ins
+        Variadic<AnyType>:$input
+    );
+
+    let results = (outs
+        LLVMArrayType:$output
+    );
+
+    let hasVerifier = 1;
+}
+
 
 def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
     let summary = "Constant data array operation";

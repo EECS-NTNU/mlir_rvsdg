@@ -44,7 +44,7 @@ GammaNode::verify()
   }
   for (auto & region : this->getRegions())
   {
-    if (region.getNumArguments() != this->getInputs().size())
+    if (region.getNumArguments() != this->getInputs().size()+1)
     {
       return emitOpError(" has region with wrong number of arguments. "
                          "Offending region: #")
@@ -53,14 +53,14 @@ GammaNode::verify()
     }
     auto arguments = region.getArguments();
     auto inputs = this->getInputs();
-    for (size_t i = 0; i < region.getNumArguments(); ++i)
+    for (size_t i = 1; i < region.getNumArguments(); ++i)
     {
-      if (arguments[i].getType() != inputs[i].getType())
+      if (arguments[i].getType() != inputs[i-1].getType())
       {
         auto argument = arguments[i];
         emitOpError(" has mismatched region argument types: Region #")
             << region.getRegionNumber() << " Argument #" << argument.getArgNumber() << ". Expected "
-            << inputs[i].getType() << ", got " << arguments[i].getType();
+            << inputs[i-1].getType() << ", got " << arguments[i].getType();
       }
     }
   }
