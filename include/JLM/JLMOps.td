@@ -24,10 +24,10 @@ def JLM_Load: JLM_Op<"load", []> {
 
     let results = (outs
         AnyType:$output,
-        RVSDG_MemState:$outputMemState
+        Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict $pointer `:` type($pointer) `(` $inputMemStates `)` `->` type($output) `,` type($outputMemState)";
+    let assemblyFormat = "attr-dict $pointer `:` type($pointer) `(` $inputMemStates `)` `->` type($output) `,` type($outputMemStates)";
     let hasVerifier = 1;
 }
 
@@ -45,10 +45,10 @@ def JLM_Store: JLM_Op<"store"> {
     );
 
     let results = (outs
-        RVSDG_MemState:$outputMemState
+        Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict `(` $pointer `:` type($pointer) `,` $value `:` type($value) `)` `(` $inputMemStates `)` `->` type($outputMemState)";
+    let assemblyFormat = "attr-dict `(` $pointer `:` type($pointer) `,` $value `:` type($value) `)` `(` $inputMemStates `)` `->` type($outputMemStates)";
     let hasVerifier = 1;
 }
 
