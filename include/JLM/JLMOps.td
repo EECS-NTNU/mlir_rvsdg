@@ -200,24 +200,6 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
     let hasVerifier = 1;
 }
 
-
-def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
-    let summary = "Constant data array operation";
-    let description = [{
-        Constant data array operation.
-    }];
-
-    let arguments = (ins
-        Variadic<AnyType>:$input
-    );
-
-    let results = (outs
-        LLVMArrayType:$output
-    );
-
-    let hasVerifier = 1;
-}
-
 def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
     let summary = "IO barrier operation";
     let description = [{
