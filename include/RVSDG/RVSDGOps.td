@@ -175,6 +175,85 @@ def RVSDG_LambdaResult: RVSDG_Op<"lambdaResult", [
     let hasVerifier = 1;
 }
 
+def RVSDG_LambdaEntryMemoryStateSplitOperation: RVSDG_Op<"lambdaEntryMemoryStateSplitOperation", [
+        HasParent<"mlir::rvsdg::LambdaNode">,
+        Pure
+    ]> {
+    let summary = "Lambda entry memory splitter";
+    let description = [{
+        Splits incoming memory state into multiple states.
+    }];
+
+    let arguments = (ins
+        RVSDG_MemState:$input
+    );
+
+    let results = (outs
+        Variadic<RVSDG_MemState>:$outputValues
+    );
+
+//    let assemblyFormat = "attr-dict `(` $input `)` `:`custom<TypedParamList>($outputValues, type($outputValues))";
+}
+
+def RVSDG_LambdaExitMemoryStateMergeOperation: RVSDG_Op<"lambdaExitMemoryStateMergeOperation", [
+        HasParent<"mlir::rvsdg::LambdaNode">,
+        Pure
+    ]> {
+    let summary = "Lambda exit memory merger";
+    let description = [{
+        Merges memory state into a single outgoing memory states.
+    }];
+
+    let arguments = (ins
+        Variadic<RVSDG_MemState>:$inputStates
+    );
+
+    let results = (outs
+        RVSDG_MemState:$output
+    );
+
+    let assemblyFormat = "attr-dict `(` $inputStates `)` `:` type($output)";
+}
+
+def RVSDG_CallExitMemoryStateSplit: RVSDG_Op<"callExitMemoryStateSplitOperation", [
+        Pure
+    ]> {
+    let summary = "Lambda entry memory splitter";
+    let description = [{
+        Splits incoming memory state into multiple states.
+    }];
+
+    let arguments = (ins
+        RVSDG_MemState:$input
+    );
+
+    let results = (outs
+        Variadic<RVSDG_MemState>:$outputValues
+    );
+
+//    let assemblyFormat = "attr-dict `(` $input `)` `:`custom<TypedParamList>($outputValues, type($outputValues))";
+}
+
+def RVSDG_CallEntryMemoryStateMerge: RVSDG_Op<"callEntryMemoryStateMerge", [
+        Pure
+    ]> {
+    let summary = "Call memory merger";
+    let description = [{
+        Merges memory state into a single outgoing memory states.
+    }];
+
+    let arguments = (ins
+        Variadic<RVSDG_MemState>:$inputStates
+    );
+
+    let results = (outs
+        RVSDG_MemState:$output
+    );
+
+    let assemblyFormat = "attr-dict `(` $inputStates `)` `:` type($output)";
+}
+
+
 /*
 *  Theta Node
 */
