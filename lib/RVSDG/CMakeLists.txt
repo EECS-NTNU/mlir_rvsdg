@@ -20,6 +20,7 @@ add_mlir_dialect_library(MLIRRVSDG
     MLIRDialect
     MLIRIR
     MLIRDialectUtils
+    MLIRPolygeist
 )
 
 install(DIRECTORY "${CMAKE_SOURCE_DIR}/include/RVSDG" DESTINATION include
