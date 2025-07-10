@@ -4,4 +4,4 @@
 #include <mlir/IR/Builders.h>
 
 #define GET_TYPEDEF_CLASSES
-#include "JLM/Types.h.inc"
+#include <JLM/Types.h.inc>

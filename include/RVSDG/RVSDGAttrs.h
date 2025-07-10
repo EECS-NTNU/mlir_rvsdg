@@ -4,4 +4,4 @@
 #include <mlir/IR/Builders.h>
 
 #define GET_ATTRDEF_CLASSES
-#include "RVSDG/Attrs.h.inc"
+#include <RVSDG/Attrs.h.inc>

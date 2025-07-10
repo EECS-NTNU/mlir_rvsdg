@@ -1,5 +1,5 @@
 #pragma once
 
-#include "mlir/IR/OpDefinition.h"
+#include <mlir/IR/OpDefinition.h>
 
-#include "RVSDG/OpInterfaces.h.inc"
+#include <RVSDG/OpInterfaces.h.inc>

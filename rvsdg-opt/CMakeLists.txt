@@ -7,8 +7,11 @@ set(LIBS
         MLIROptLib
         MLIRRVSDG
         MLIRJLM
+        MLIRPolygeist
         )
 add_llvm_executable(rvsdg-opt rvsdg-opt.cpp)
 
 llvm_update_compile_flags(rvsdg-opt)
 target_link_libraries(rvsdg-opt PRIVATE ${LIBS})
+
+install(TARGETS "rvsdg-opt" DESTINATION bin)

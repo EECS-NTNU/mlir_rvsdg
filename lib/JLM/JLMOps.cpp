@@ -1,14 +1,12 @@
 #include <unordered_set>
 
-#include "mlir/IR/Block.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/Support/LogicalResult.h"
+#include <mlir/IR/Block.h>
+#include <mlir/IR/OpImplementation.h>
+#include <mlir/Support/LogicalResult.h>
+#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 
-#include "mlir/Dialect/LLVMIR/LLVMTypes.h"
-
-#include "RVSDG/RVSDGASMDirectives.h"
-
-#include "JLM/JLMOps.h"
+#include <JLM/JLMOps.h>
+#include <RVSDG/RVSDGASMDirectives.h>
 
 using namespace mlir;
 using namespace jlm;

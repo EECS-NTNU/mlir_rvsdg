@@ -1,17 +1,15 @@
-#include <unordered_set>
-
-#include "mlir/IR/Block.h"
-#include "mlir/IR/OpImplementation.h"
-#include "mlir/Support/LogicalResult.h"
-
-#include "mlir/Dialect/LLVMIR/LLVMTypes.h"
-
-#include "RVSDG/RVSDGASMDirectives.h"
-#include "RVSDG/RVSDGDialect.h"
-#include "RVSDG/RVSDGOps.h"
-
 #include <iostream>
 #include <unordered_map>
+#include <unordered_set>
+
+#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
+#include <mlir/IR/Block.h>
+#include <mlir/IR/OpImplementation.h>
+#include <mlir/Support/LogicalResult.h>
+
+#include <RVSDG/RVSDGASMDirectives.h>
+#include <RVSDG/RVSDGDialect.h>
+#include <RVSDG/RVSDGOps.h>
 
 using namespace mlir;
 using namespace rvsdg;
@@ -46,9 +44,9 @@ GammaNode::verify()
   {
     if (region.getNumArguments() != this->getInputs().size()+1)
     {
-      return emitOpError(" has region with wrong number of arguments. "
+      return emitOpError("has region with wrong number of arguments. "
                          "Offending region: #")
-          << region.getRegionNumber() << ". Expected " << this->getInputs().size() << ", got "
+          << region.getRegionNumber() << ". Expected " << this->getInputs().size()+1 << ", got "
           << region.getNumArguments();
     }
     auto arguments = region.getArguments();

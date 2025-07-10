@@ -191,7 +191,7 @@ def Memref2PointerOp : Polygeist_Op<"memref2pointer", [
 
   let hasFolder = 1;
   let hasCanonicalizer = 1;
-  
+
   let extraClassDeclaration = [{
     ::mlir::Value getViewSource() { return getSource(); }
   }];
@@ -222,7 +222,7 @@ def Pointer2MemrefOp : Polygeist_Op<"pointer2memref", [
 
   let hasFolder = 1;
   let hasCanonicalizer = 1;
-  
+
   let extraClassDeclaration = [{
     ::mlir::Value getViewSource() { return getSource(); }
   }];

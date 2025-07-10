@@ -40,4 +40,9 @@ mlir_tablegen(Passes.h.inc -gen-pass-decls)
 add_public_tablegen_target(MLIRRVSDGPassIncGen)
 add_dependencies(mlir-headers MLIRRVSDGPassIncGen)
 
+set(LLVM_TARGET_DEFINITIONS RVSDGPatterns.td)
+mlir_tablegen(Patterns.h.inc -gen-rewriters)
+add_public_tablegen_target(MLIRRVSDGPatternsIncGen)
+add_dependencies(mlir-headers MLIRRVSDGPatternsIncGen)
+
 add_mlir_doc(RVSDGOps RVSDGDialect Dialects/ -gen-dialect-doc)

@@ -1,3 +1,3 @@
 #pragma once
 
-#include "RVSDG/TypeInterfaces.h.inc"
+#include <RVSDG/TypeInterfaces.h.inc>

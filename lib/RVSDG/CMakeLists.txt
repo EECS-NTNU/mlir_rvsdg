@@ -1,4 +1,3 @@
-
 add_mlir_dialect_library(MLIRRVSDG
     RVSDGTypes.cpp
     RVSDGAttrs.cpp
@@ -7,6 +6,7 @@ add_mlir_dialect_library(MLIRRVSDG
     RVSDGOpInterfaces.cpp
     
     RVSDGPrintExportPass.cpp
+    RVSDGImportPolygeistPass.cpp
 
     DEPENDS
     MLIRRVSDGDialectIncGen

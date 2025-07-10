@@ -1,10 +1,11 @@
-#include "RVSDG/RVSDGPasses.h"
 #include <mlir/Pass/PassManager.h>
+
+#include <RVSDG/RVSDGPasses.h>
 
 namespace mlir::rvsdg::printExportPass
 {
 #define GEN_PASS_DEF_RVSDG_PRINTEXPORTPASS
-#include "RVSDG/Passes.h.inc"
+#include <RVSDG/Passes.h.inc>
 }
 
 struct PrintExportPass : mlir::rvsdg::printExportPass::impl::RVSDG_PrintExportPassBase<PrintExportPass>
