@@ -134,24 +134,38 @@ struct ImportPolygeistPass
     }
     else if (auto funcType = mlir::dyn_cast<mlir::LLVM::LLVMFunctionType>(type))
     {
-      return ConvertFunctionType(funcType.getParams(), funcType.getReturnTypes(), builder);
+      return ConvertFunctionType(funcType.getParams(), funcType.getReturnTypes(), builder, funcType.isVarArg());
     }
     return type;
   }
 
   // Helper method to convert function types
   mlir::Type
-  ConvertFunctionType(mlir::TypeRange inputs, mlir::TypeRange outputs, mlir::OpBuilder & builder)
+  ConvertFunctionType(mlir::TypeRange inputs, mlir::TypeRange outputs, mlir::OpBuilder & builder, bool isVariadic=false, bool addStateEdges=false)
   {
     auto convertedInputs = std::vector<mlir::Type>();
     for (auto input : inputs)
     {
       convertedInputs.push_back(ConvertType(input, builder));
     }
+    if (isVariadic)
+    {
+      convertedInputs.push_back(builder.getType<::mlir::jlm::VarargListType>());
+    }
+    if ( addStateEdges )
+    {
+      convertedInputs.push_back(builder.getType<mlir::rvsdg::IOStateEdgeType>());
+      convertedInputs.push_back(builder.getType<mlir::rvsdg::MemStateEdgeType>());
+    }
     auto convertedOutputs = std::vector<mlir::Type>();
     for (auto output : outputs)
     {
       convertedOutputs.push_back(ConvertType(output, builder));
+    }
+    if ( addStateEdges )
+    {
+      convertedOutputs.push_back(builder.getType<mlir::rvsdg::IOStateEdgeType>());
+      convertedOutputs.push_back(builder.getType<mlir::rvsdg::MemStateEdgeType>());
     }
     return builder.getType<mlir::FunctionType>(convertedInputs, convertedOutputs);
   }
@@ -603,7 +617,8 @@ struct ImportPolygeistPass
       if (funcOp.empty())
       {
         // The function is not defined, so we create an OmegaArgument
-        auto type = ConvertType(funcOp.getFunctionType(), builder);
+        auto funcType = funcOp.getFunctionType();
+        auto type = ConvertFunctionType(funcType.getInputs(), funcType.getResults(), builder, false, true);
         auto omegaArgument = builder.create<::mlir::rvsdg::OmegaArgument>(
             builder.getUnknownLoc(),
             type,
@@ -659,7 +674,6 @@ struct ImportPolygeistPass
           lambdaBlock.addArgument(ConvertType(arg.getType(), builder), builder.getUnknownLoc());
           blockArgsValueMap[arg] = lambdaBlock.getArguments().back();
         }
-
         lambdaBlock.addArgument(
             builder.getType<mlir::rvsdg::MemStateEdgeType>(),
             builder.getUnknownLoc());
@@ -671,7 +685,6 @@ struct ImportPolygeistPass
             builder.getType<mlir::rvsdg::IOStateEdgeType>(),
             builder.getUnknownLoc());
         newestIOState = lambdaBlock.getArguments().back();
-
         for (auto dependency : contextVars)
         {
           lambdaBlock.addArgument(
@@ -686,7 +699,6 @@ struct ImportPolygeistPass
               builder.getUnknownLoc());
           blockArgsNameMap[name] = lambdaBlock.getArguments().back();
         }
-
         ConvertRegion(
             lambdaBlock,
             funcOp.getRegion(),
@@ -745,10 +757,18 @@ struct ImportPolygeistPass
       }
       else
       {
-        auto type = ConvertType(globalOp.getType(), builder);
-        auto importedType = type.isa<mlir::LLVM::LLVMFunctionType>()
-                              ? type
-                              : builder.getType<::mlir::LLVM::LLVMPointerType>();
+        mlir::Type type;
+        mlir::Type importedType;
+        if ( auto funcType = mlir::dyn_cast<mlir::LLVM::LLVMFunctionType>(type) )
+        {
+          type = ConvertFunctionType(funcType.getParams(), funcType.getReturnTypes(), builder, funcType.isVarArg(), true);
+          importedType = type;
+        }
+        else
+        {
+          type = ConvertType(globalOp.getType(), builder);
+          importedType = builder.getType<::mlir::LLVM::LLVMPointerType>();
+        }
         auto omegaArgument = builder.create<::mlir::rvsdg::OmegaArgument>(
             builder.getUnknownLoc(),
             importedType,
@@ -762,7 +782,8 @@ struct ImportPolygeistPass
     }
     else if (auto funcOp = mlir::dyn_cast<mlir::LLVM::LLVMFuncOp>(op))
     {
-      auto type = ConvertType(funcOp.getFunctionType(), builder);
+      auto funcType = funcOp.getFunctionType();
+      auto type = ConvertFunctionType(funcType.getParams(), funcType.getReturnTypes(), builder, funcType.isVarArg(), true);
       auto omegaArgument = builder.create<::mlir::rvsdg::OmegaArgument>(
           builder.getUnknownLoc(),
           type,
@@ -902,6 +923,33 @@ struct ImportPolygeistPass
     }
     else if (auto callOp = mlir::dyn_cast<mlir::LLVM::CallOp>(op))
     {
+      mlir::scf::ValueVector operands;
+      auto functionType = callOp.getCalleeFunctionType();
+      if ( functionType.isVarArg() )
+      {
+        auto signatureArguments = functionType.getNumParams();
+        assert(signatureArguments <= inputs.size());
+        for ( size_t i=0; i<signatureArguments; i++ )
+        {
+          operands.push_back(inputs[i]);
+        }
+        llvm::SmallVector<::mlir::Value> variadicInputs;
+        for ( size_t i=signatureArguments; i < inputs.size(); i++ )
+        {
+          variadicInputs.push_back(inputs[i]);
+        }
+        auto varArgList = builder.create<::mlir::jlm::CreateVarArgList>(
+          builder.getUnknownLoc(),
+          builder.getType<::mlir::jlm::VarargListType>(),
+          variadicInputs);
+        resultBlock.push_back(varArgList);
+        operands.push_back(varArgList);
+      }
+      else
+      {
+        operands = inputs;
+      }
+
       mlir::SmallVector<mlir::Type> resultTypes;
       for (auto result : callOp.getResults())
       {
@@ -915,7 +963,7 @@ struct ImportPolygeistPass
           builder.getUnknownLoc(),
           resultTypes,
           ConvertName(callee.value().str(), nameMap),
-          inputs,
+          operands,
           newestIOState,
           newestMemState);
       newestIOState = call.getOutputIoState();
