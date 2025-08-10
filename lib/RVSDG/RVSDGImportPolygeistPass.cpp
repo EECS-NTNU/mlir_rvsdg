@@ -759,7 +759,7 @@ struct ImportPolygeistPass
       {
         mlir::Type type;
         mlir::Type importedType;
-        if ( auto funcType = mlir::dyn_cast<mlir::LLVM::LLVMFunctionType>(type) )
+        if ( auto funcType = mlir::dyn_cast<mlir::LLVM::LLVMFunctionType>(globalOp.getType()) )
         {
           type = ConvertFunctionType(funcType.getParams(), funcType.getReturnTypes(), builder, funcType.isVarArg(), true);
           importedType = type;
