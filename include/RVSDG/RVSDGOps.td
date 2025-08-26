@@ -201,7 +201,7 @@ def RVSDG_LambdaExitMemoryStateMergeOperation: RVSDG_Op<"lambdaExitMemoryStateMe
     ]> {
     let summary = "Lambda exit memory merger";
     let description = [{
-        Merges memory state into a single outgoing memory states.
+        Merges memory states into a single outgoing memory state.
     }];
 
     let arguments = (ins
@@ -239,7 +239,7 @@ def RVSDG_CallEntryMemoryStateMerge: RVSDG_Op<"callEntryMemoryStateMerge", [
     ]> {
     let summary = "Call memory merger";
     let description = [{
-        Merges memory state into a single outgoing memory states.
+        Merges memory states into a single outgoing memory state.
     }];
 
     let arguments = (ins
@@ -253,6 +253,24 @@ def RVSDG_CallEntryMemoryStateMerge: RVSDG_Op<"callEntryMemoryStateMerge", [
     let assemblyFormat = "attr-dict `(` $inputStates `)` `:` type($output)";
 }
 
+def RVSDG_MemoryStateJoin: RVSDG_Op<"memoryStateJoin", [
+        Pure
+    ]> {
+    let summary = "memory state joiner";
+    let description = [{
+        Joins memory states into a single outgoing memory state.
+    }];
+
+    let arguments = (ins
+        Variadic<RVSDG_MemState>:$inputStates
+    );
+
+    let results = (outs
+        RVSDG_MemState:$output
+    );
+
+    let assemblyFormat = "attr-dict `(` $inputStates `)` `:` type($output)";
+}
 
 /*
 *  Theta Node
