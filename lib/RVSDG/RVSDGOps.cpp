@@ -164,56 +164,56 @@ LambdaNode::getResultTypes()
   assert(type && "LambdaNode has invalid result type");
   return type.getReturnTypes();
 }
-
-/*
-* Apply node verifier
-* Verifies the following attributes:
-* - Number and types of operands when compared to function signature
-*  - Given a function signature with n operands of types T1, T2, ..., Tn, the apply node
-*    should have n operands of types T1, T2, ..., Tn.
-* - Number and types of outputs when compared to the signature of the lambda node
-*  - Given a lambda signature with n results of types T1, T2, ..., Tn, the apply node
-*    should have n outputs of types T1, T2, ..., Tn.
-*/
-// LogicalResult ApplyNode::verify() {
-//   auto lambdaType = this->getLambda().getType();
-//   auto paramTypes = this->getParameters().getTypes();
-//   auto resultTypes = this->getResults().getTypes();
-
-//   if (lambdaType.getParameterTypes().size() != paramTypes.size()) {
-//     return this->emitOpError(" has the wrong number of parameters.")
-//     << " Lambda expects " << lambdaType.getParameterTypes().size()
-//     << " but " << paramTypes.size() << " were given.";
-//   }
-
-//   if (lambdaType.getParameterTypes().size() != paramTypes.size()) {
-//     return this->emitOpError(" has the wrong number of result types.")
-//     << " Lambda provides " << lambdaType.getParameterTypes().size()
-//     << " but " << paramTypes.size() << " were specified.";
-//   }
-
-//   size_t typeIndex = 0;
-//   for (auto [lambdaParam, nodeParam] : zip(lambdaType.getParameterTypes(), paramTypes)) {
-//     if (lambdaParam != nodeParam) {
-//       return emitOpError(" has mismatched parameter types.")
-//       << " Offending parameter: #" << typeIndex << "."
-//       << " Lambda expected " << lambdaParam << ", but got " << nodeParam;
-//     }
-//     ++ typeIndex;
-//   }
-
-//   typeIndex = 0;
-//   for (auto [lambdaResult, nodeResult] : zip(lambdaType.getReturnTypes(), resultTypes)) {
-//     if (lambdaResult != nodeResult) {
-//       return emitOpError(" has mismatched result types.")
-//       << " Offending result: #" << typeIndex << "."
-//       << " Lambda expected " << lambdaResult << ", but got " << nodeResult;
-//     }
-//     ++ typeIndex;
-//   }
-
-//   return LogicalResult::success();
-// }
+//
+// /*
+// * Apply node verifier
+// * Verifies the following attributes:
+// * - Number and types of operands when compared to function signature
+// *  - Given a function signature with n operands of types T1, T2, ..., Tn, the apply node
+// *    should have n operands of types T1, T2, ..., Tn.
+// * - Number and types of outputs when compared to the signature of the lambda node
+// *  - Given a lambda signature with n results of types T1, T2, ..., Tn, the apply node
+// *    should have n outputs of types T1, T2, ..., Tn.
+// */
+// // LogicalResult ApplyNode::verify() {
+// //   auto lambdaType = this->getLambda().getType();
+// //   auto paramTypes = this->getParameters().getTypes();
+// //   auto resultTypes = this->getResults().getTypes();
+//
+// //   if (lambdaType.getParameterTypes().size() != paramTypes.size()) {
+// //     return this->emitOpError(" has the wrong number of parameters.")
+// //     << " Lambda expects " << lambdaType.getParameterTypes().size()
+// //     << " but " << paramTypes.size() << " were given.";
+// //   }
+//
+// //   if (lambdaType.getParameterTypes().size() != paramTypes.size()) {
+// //     return this->emitOpError(" has the wrong number of result types.")
+// //     << " Lambda provides " << lambdaType.getParameterTypes().size()
+// //     << " but " << paramTypes.size() << " were specified.";
+// //   }
+//
+// //   size_t typeIndex = 0;
+// //   for (auto [lambdaParam, nodeParam] : zip(lambdaType.getParameterTypes(), paramTypes)) {
+// //     if (lambdaParam != nodeParam) {
+// //       return emitOpError(" has mismatched parameter types.")
+// //       << " Offending parameter: #" << typeIndex << "."
+// //       << " Lambda expected " << lambdaParam << ", but got " << nodeParam;
+// //     }
+// //     ++ typeIndex;
+// //   }
+//
+// //   typeIndex = 0;
+// //   for (auto [lambdaResult, nodeResult] : zip(lambdaType.getReturnTypes(), resultTypes)) {
+// //     if (lambdaResult != nodeResult) {
+// //       return emitOpError(" has mismatched result types.")
+// //       << " Offending result: #" << typeIndex << "."
+// //       << " Lambda expected " << lambdaResult << ", but got " << nodeResult;
+// //     }
+// //     ++ typeIndex;
+// //   }
+//
+// //   return LogicalResult::success();
+// // }
 
 // CallableOpInterface methods for apply node
 // mlir::CallInterfaceCallable ApplyNode::getCallableForCallee() {
@@ -237,6 +237,50 @@ LambdaNode::getResultTypes()
 //   std::cerr << "getArgOperandsMutable() - has not been implemented" << std::endl;
 //   exit(-1);
 // }
+
+/**
+ * @brief Verifies that each output has a corresponding memory state index
+ */
+LogicalResult
+LambdaEntryMemoryStateSplit::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getResults().size())
+    return emitOpError("The number of outputs does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
+ * @brief Verifies that each input has a corresponding memory state index
+ */
+LogicalResult
+LambdaExitMemoryStateMerge::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getInputStates().size())
+    return emitOpError("The number of inputs does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
+ * @brief Verifies that each output has a corresponding memory state index
+ */
+LogicalResult
+CallExitMemoryStateSplit::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getResults().size())
+    return emitOpError("The number of outputs does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
+ * @brief Verifies that each output has a corresponding memory state index
+ */
+LogicalResult
+CallEntryMemoryStateMerge::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getInputStates().size())
+    return emitOpError("The number of input does not match the number of memory state indices");
+  return LogicalResult::success();
+}
 
 /**
  * Theta node verifier.
