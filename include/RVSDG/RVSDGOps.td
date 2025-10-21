@@ -175,7 +175,7 @@ def RVSDG_LambdaResult: RVSDG_Op<"lambdaResult", [
     let hasVerifier = 1;
 }
 
-def RVSDG_LambdaEntryMemoryStateSplitOperation: RVSDG_Op<"lambdaEntryMemoryStateSplitOperation", [
+def RVSDG_LambdaEntryMemoryStateSplit: RVSDG_Op<"lambdaEntryMemoryStateSplit", [
         HasParent<"mlir::rvsdg::LambdaNode">,
         Pure
     ]> {
@@ -185,17 +185,22 @@ def RVSDG_LambdaEntryMemoryStateSplitOperation: RVSDG_Op<"lambdaEntryMemoryState
     }];
 
     let arguments = (ins
-        RVSDG_MemState:$input
+        RVSDG_MemState:$input,
+        // A mapping providing the memory state index of each output
+        // TODO: Use Properties instead when moving to LLVM 19+
+        ArrayAttr:$memoryStateIndices
     );
 
     let results = (outs
         Variadic<RVSDG_MemState>:$outputValues
     );
 
-//    let assemblyFormat = "attr-dict `(` $input `)` `:`custom<TypedParamList>($outputValues, type($outputValues))";
+//  let assemblyFormat = "attr-dict `(` $input `)` `:`custom<TypedParamList>($outputValues, type($outputValues))";
+
+    let hasVerifier = 1;
 }
 
-def RVSDG_LambdaExitMemoryStateMergeOperation: RVSDG_Op<"lambdaExitMemoryStateMergeOperation", [
+def RVSDG_LambdaExitMemoryStateMerge: RVSDG_Op<"lambdaExitMemoryStateMerge", [
         HasParent<"mlir::rvsdg::LambdaNode">,
         Pure
     ]> {
@@ -205,17 +210,22 @@ def RVSDG_LambdaExitMemoryStateMergeOperation: RVSDG_Op<"lambdaExitMemoryStateMe
     }];
 
     let arguments = (ins
-        Variadic<RVSDG_MemState>:$inputStates
-    );
+        Variadic<RVSDG_MemState>:$inputStates,
+        // A mapping providing the memory state index of each output
+        // TODO: Use Properties instead when moving to LLVM 19+
+        ArrayAttr:$memoryStateIndices
+	);
 
     let results = (outs
         RVSDG_MemState:$output
     );
 
     let assemblyFormat = "attr-dict `(` $inputStates `)` `:` type($output)";
+
+    let hasVerifier = 1;
 }
 
-def RVSDG_CallExitMemoryStateSplit: RVSDG_Op<"callExitMemoryStateSplitOperation", [
+def RVSDG_CallExitMemoryStateSplit: RVSDG_Op<"callExitMemoryStateSplit", [
         Pure
     ]> {
     let summary = "Lambda entry memory splitter";
@@ -224,14 +234,19 @@ def RVSDG_CallExitMemoryStateSplit: RVSDG_Op<"callExitMemoryStateSplitOperation"
     }];
 
     let arguments = (ins
-        RVSDG_MemState:$input
-    );
+         RVSDG_MemState:$input,
+		 // A mapping providing the memory state index of each output
+		 // TODO: Use Properties instead when moving to LLVM 19+
+		 ArrayAttr:$memoryStateIndices
+	);
 
     let results = (outs
         Variadic<RVSDG_MemState>:$outputValues
     );
 
 //    let assemblyFormat = "attr-dict `(` $input `)` `:`custom<TypedParamList>($outputValues, type($outputValues))";
+
+    let hasVerifier = 1;
 }
 
 def RVSDG_CallEntryMemoryStateMerge: RVSDG_Op<"callEntryMemoryStateMerge", [
@@ -243,7 +258,10 @@ def RVSDG_CallEntryMemoryStateMerge: RVSDG_Op<"callEntryMemoryStateMerge", [
     }];
 
     let arguments = (ins
-        Variadic<RVSDG_MemState>:$inputStates
+        Variadic<RVSDG_MemState>:$inputStates,
+		// A mapping providing the memory state index of each output
+		// TODO: Use Properties instead when moving to LLVM 19+
+		ArrayAttr:$memoryStateIndices
     );
 
     let results = (outs
@@ -251,6 +269,8 @@ def RVSDG_CallEntryMemoryStateMerge: RVSDG_Op<"callEntryMemoryStateMerge", [
     );
 
     let assemblyFormat = "attr-dict `(` $inputStates `)` `:` type($output)";
+
+    let hasVerifier = 1;
 }
 
 def RVSDG_MemoryStateJoin: RVSDG_Op<"memoryStateJoin", [

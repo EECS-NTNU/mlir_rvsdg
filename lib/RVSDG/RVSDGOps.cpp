@@ -239,6 +239,50 @@ LambdaNode::getResultTypes()
 // }
 
 /**
+ * @brief Verifies that each output has a corresponding memory state index
+ */
+LogicalResult
+LambdaEntryMemoryStateSplit::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getResults().size())
+    return emitOpError("The number of outputs does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
+ * @brief Verifies that each input has a corresponding memory state index
+ */
+LogicalResult
+LambdaExitMemoryStateMerge::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getInputStates().size())
+    return emitOpError("The number of inputs does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
+ * @brief Verifies that each output has a corresponding memory state index
+ */
+LogicalResult
+CallExitMemoryStateSplit::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getResults().size())
+    return emitOpError("The number of outputs does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
+ * @brief Verifies that each output has a corresponding memory state index
+ */
+LogicalResult
+CallEntryMemoryStateMerge::verify()
+{
+  if (this->getMemoryStateIndicesAttr().size() != this->getInputStates().size())
+    return emitOpError("The number of input does not match the number of memory state indices");
+  return LogicalResult::success();
+}
+
+/**
  * Theta node verifier.
  * Verifies the following attributes:
  * - There should be an equal number of inputs, outputs, and region arguments, and they
