@@ -185,7 +185,7 @@ def RVSDG_LambdaEntryMemoryStateSplit: RVSDG_Op<"lambdaEntryMemoryStateSplit", [
     }];
 
     let arguments = (ins
-         RVSDG_MemState:$input,
+        RVSDG_MemState:$input,
         // A mapping providing the memory state index of each output
         // TODO: Use Properties instead when moving to LLVM 19+
         ArrayAttr:$memoryStateIndices
