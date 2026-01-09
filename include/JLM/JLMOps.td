@@ -122,11 +122,13 @@ def JLM_Malloc: JLM_Op<"malloc"> {
     }];
 
     let arguments = (ins
-        AnySignlessInteger:$size
+        AnySignlessInteger:$size,
+        RVSDG_IOState:$inputIoState
     );
 
     let results = (outs
         LLVMPointerType:$output,
+        RVSDG_IOState:$outputIoState,
         RVSDG_MemState:$outputMemState
     );
 }
