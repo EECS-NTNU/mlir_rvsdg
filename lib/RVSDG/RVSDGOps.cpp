@@ -767,6 +767,40 @@ parseRVSDGRegions(OpAsmParser & parser, SmallVectorImpl<std::unique_ptr<Region>>
 }
 
 /**
+ * Omega node result verifier
+ */
+LogicalResult
+OmegaResult::verify()
+{
+  auto exportNamesAttr = getExportNames();
+
+  // Verify that the number of export names matches the number of operands
+  if (exportNamesAttr.size() != getNumOperands())
+  {
+    return emitOpError("has ")
+        << getNumOperands() << " operands, but exportNames has " << exportNamesAttr.size()
+        << " entries";
+  }
+
+  // Verify that each entry is a non-null string attribute
+  for (size_t i = 0; i < exportNamesAttr.size(); ++i)
+  {
+    auto elem = exportNamesAttr[i];
+    auto strAttr = elem.dyn_cast<::mlir::StringAttr>();
+    if (!strAttr)
+    {
+      return emitOpError("entry ") << i << " in exportNames is not a string attribute";
+    }
+    if (strAttr.getValue().empty())
+    {
+      return emitOpError("entry ") << i << " in exportNames is an empty string";
+    }
+  }
+
+  return success();
+}
+
+/**
  * Auto generated sources
  */
 #define GET_OP_CLASSES

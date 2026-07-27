@@ -74,14 +74,23 @@ def RVSDG_OmegaResult: RVSDG_Op<"omegaResult", [
     let summary = "Omega node results";
     let description = [{
         Omega node terminator. Maps operands to items exported
-        from the omega node.
+        from the omega node. Each operand corresponds to a region result.
+        The `exportNames` attribute is an ArrayAttr of string names.
+        Each entry at index i corresponds to operand/result i and marks
+        that result as a named export (mirroring RVSDG GraphExport).
     }];
 
     let arguments = (ins
-        Variadic<AnyType>:$outputValues
+        Variadic<AnyType>:$outputValues,
+        ArrayAttr:$exportNames
     );
 
-    let assemblyFormat = "attr-dict custom<TypedParamList>($outputValues, type($outputValues))";
+    let results = (outs
+        Variadic<AnyType>:$results
+    );
+
+    let assemblyFormat = "attr-dict custom<TypedParamList>($outputValues, type($outputValues)) `:` type(results)";
+    let hasVerifier = 1;
 }
 
 def RVSDG_OmegaArgument: RVSDG_Op<"omegaArgument", [
@@ -442,8 +451,8 @@ def RVSDG_DeltaResult: RVSDG_Op<"deltaResult", [HasParent<"mlir::rvsdg::DeltaNod
 }
 
 /*
-*  Control type ops
-*/
+ *   Control type ops
+ */
 
 def RVSDG_ConstantCtrl: RVSDG_Op<"constantCtrl", [Pure]> {
     let summary = "Materialize constant control value from integer constant";
