@@ -219,3 +219,33 @@ def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
 
     let hasVerifier = 1;
 }
+
+def JLM_FuncToPtr: JLM_Op<"funcToPtr"> {
+    let summary = "Cast a function reference to a pointer";
+    let description = [{
+        Interpret a reference to a function as a pointer.
+    }];
+
+    let arguments = (ins
+        FunctionType:$input
+    );
+
+    let results = (outs
+        LLVMPointerType:$output
+    );
+}
+
+def JLM_PtrToFunc: JLM_Op<"ptrToFunc"> {
+    let summary = "Cast a pointer to a function reference";
+    let description = [{
+        Interpret a pointer as a reference to a function of the given type.
+    }];
+
+    let arguments = (ins
+        LLVMPointerType:$input
+    );
+
+    let results = (outs
+        FunctionType:$output
+    );
+}
