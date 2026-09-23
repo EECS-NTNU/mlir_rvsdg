@@ -10,45 +10,67 @@ class JLM_Op<string mnemonic, list<Trait> traits = []> :
     Op<JLM_Dialect, mnemonic, traits>;
 
 
-def JLM_Load: JLM_Op<"load", []> {
+def JLM_Load: JLM_Op<"load", [AttrSizedOperandSegments, AttrSizedResultSegments]> {
     let summary = "Load from memory";
     let description = [{
         Load from memory.
+
+        The `isVolatile` attribute is a flag indicating whether the load is volatile.
+        A volatile load additionally threads an I/O state: it takes an input I/O state
+        (`inputIoState`) and produces an output I/O state (`outputIoState`), modelling the
+        externally-visible side effect. A non-volatile load carries neither I/O state. The
+        remaining operands/results are the memory states.
+
+        The verifier checks that `isVolatile` agrees with the presence of `inputIoState`
+        and `outputIoState`.
     }];
 
     let arguments = (ins
         LLVMPointerType:$pointer,
         UI32Attr:$alignment,
+        BoolAttr:$isVolatile,
+        Optional<RVSDG_IOState>:$inputIoState,
         Variadic<RVSDG_MemState>:$inputMemStates
     );
 
     let results = (outs
         AnyType:$output,
+        Optional<RVSDG_IOState>:$outputIoState,
         Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict $pointer `:` type($pointer) `(` $inputMemStates `)` `->` type($output) `,` type($outputMemStates)";
     let hasVerifier = 1;
 }
 
-def JLM_Store: JLM_Op<"store"> {
+def JLM_Store: JLM_Op<"store", [AttrSizedOperandSegments, AttrSizedResultSegments]> {
     let summary = "Store to memory";
     let description = [{
         Store to memory.
+
+        The `isVolatile` attribute is a flag indicating whether the store is volatile.
+        A volatile store additionally threads an I/O state: it takes an input I/O state
+        (`inputIoState`) and produces an output I/O state (`outputIoState`), modelling the
+        externally-visible side effect. A non-volatile store carries neither I/O state. The
+        remaining operands/results are the memory states.
+
+        The verifier checks that `isVolatile` agrees with the presence of `inputIoState`
+        and `outputIoState`.
     }];
 
     let arguments = (ins
         LLVMPointerType:$pointer,
         AnyType:$value,
         UI32Attr:$alignment,
+        BoolAttr:$isVolatile,
+        Optional<RVSDG_IOState>:$inputIoState,
         Variadic<RVSDG_MemState>:$inputMemStates
     );
 
     let results = (outs
+        Optional<RVSDG_IOState>:$outputIoState,
         Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict `(` $pointer `:` type($pointer) `,` $value `:` type($value) `)` `(` $inputMemStates `)` `->` type($outputMemStates)";
     let hasVerifier = 1;
 }
 
@@ -133,26 +155,37 @@ def JLM_Malloc: JLM_Op<"malloc"> {
     );
 }
 
-def JLM_Memcpy: JLM_Op<"memcpy"> {
+def JLM_Memcpy: JLM_Op<"memcpy", [AttrSizedOperandSegments, AttrSizedResultSegments]> {
     let summary = "Copy memory content from one location to another";
     let description = [{
         Copy memory content from one location to another. Same parameters as LLVM memcpy,
         but also interacts takes and produces memory state values for use with RVSDG.
+
+        The `isVolatile` operand is a 1-bit flag indicating whether the copy is volatile.
+        A volatile copy additionally threads an I/O state: it takes an input I/O state
+        (`inputIoState`) and produces an output I/O state (`outputIoState`), modelling the
+        externally-visible side effect. A non-volatile copy carries neither I/O state. The
+        remaining operands/results are the memory states.
+
+        The verifier checks that `isVolatile` agrees with the presence of `inputIoState`
+        and `outputIoState`.
     }];
 
-    let arguments = (ins 
+    let arguments = (ins
         LLVMPointerType:$dst,
         LLVMPointerType:$src,
         AnySignlessInteger:$len,
-        AnyTypeOf<[I1, RVSDG_Ctrl<2>]>: $isVolatile,
+        BoolAttr:$isVolatile,
+        Optional<RVSDG_IOState>:$inputIoState,
         Variadic<RVSDG_MemState>:$inputMemStates
     );
 
     let results = (outs
-        RVSDG_MemState:$outputMemState
+        Optional<RVSDG_IOState>:$outputIoState,
+        Variadic<RVSDG_MemState>:$outputMemStates
     );
 
-    let assemblyFormat = "attr-dict $dst `:` type($dst) `,` $src `:` type($src) `,` $len `:` type($len) `,` $isVolatile `:` type($isVolatile) (`,` $inputMemStates^)? `->` type($outputMemState)";
+    let hasVerifier = 1;
 }
 
 def JLM_CreateVarArgList: JLM_Op<"createVarargs"> {

@@ -20,18 +20,46 @@ using namespace jlm;
 /**
  * Load
  */
-// TODO: Either eliminate the function or provide useful verification
-//       Used to check pointer type but pointers have become opaque
 LogicalResult jlm::Load::verify() {
+  // isVolatile must agree with the presence of the threaded I/O state operands.
+  auto inputIoState = this->getInputIoState();
+  auto outputIoState = this->getOutputIoState();
+
+  if (getIsVolatile())
+  {
+    if (!inputIoState || !outputIoState)
+      return emitOpError(
+          "volatile load requires an input and an output I/O state (inputIoState/outputIoState)");
+  }
+  else if (inputIoState || outputIoState)
+  {
+    return emitOpError(
+        "non-volatile load must not have an input or output I/O state (inputIoState/outputIoState)");
+  }
+
   return LogicalResult::success();
 }
 
 /*
 * Store
 */
-// TODO: Either eliminate the function or provide useful verification
-//       Used to check pointer type but pointers have become opaque
 LogicalResult jlm::Store::verify() {
+  // isVolatile must agree with the presence of the threaded I/O state operands.
+  auto inputIoState = this->getInputIoState();
+  auto outputIoState = this->getOutputIoState();
+
+  if (getIsVolatile())
+  {
+    if (!inputIoState || !outputIoState)
+      return emitOpError(
+          "volatile store requires an input and an output I/O state (inputIoState/outputIoState)");
+  }
+  else if (inputIoState || outputIoState)
+  {
+    return emitOpError(
+        "non-volatile store must not have an input or output I/O state (inputIoState/outputIoState)");
+  }
+
   return LogicalResult::success();
 }
 
@@ -71,6 +99,29 @@ LogicalResult jlm::IOBarrier::verify() {
   if (inputType != outputType) {
     return emitOpError("Input and output types must be the same.");
   }
+  return LogicalResult::success();
+}
+
+/**
+ * Memcpy
+ */
+LogicalResult jlm::Memcpy::verify() {
+  // isVolatile must agree with the presence of the threaded I/O state operands.
+  auto inputIoState = this->getInputIoState();
+  auto outputIoState = this->getOutputIoState();
+
+  if (getIsVolatile())
+  {
+    if (!inputIoState || !outputIoState)
+      return emitOpError(
+          "volatile memcpy requires an input and an output I/O state (inputIoState/outputIoState)");
+  }
+  else if (inputIoState || outputIoState)
+  {
+    return emitOpError(
+        "non-volatile memcpy must not have an input or output I/O state (inputIoState/outputIoState)");
+  }
+
   return LogicalResult::success();
 }
 
