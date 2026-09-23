@@ -103,6 +103,17 @@ LogicalResult jlm::IOBarrier::verify() {
 }
 
 /**
+ * MemoryHoistBarrier
+ */
+LogicalResult jlm::MemoryHoistBarrier::verify() {
+  if (!llvm::isa<LLVM::LLVMPointerType>(this->getAddress().getType()))
+    return emitOpError("address operand must have LLVM pointer type.");
+  if (!llvm::isa<LLVM::LLVMPointerType>(this->getOutput().getType()))
+    return emitOpError("result must have LLVM pointer type.");
+  return LogicalResult::success();
+}
+
+/**
  * Memcpy
  */
 LogicalResult jlm::Memcpy::verify() {
