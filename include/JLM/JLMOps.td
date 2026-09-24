@@ -256,7 +256,8 @@ def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
 def JLM_MemoryHoistBarrier: JLM_Op<"memoryHoistBarrier"> {
     let summary = "Memory hoist barrier operation";
     let description = [{
-        Sequentializes a load or store after an I/O state operation.
+        Sequentializes a memory operation, such as a load, store or memory copy, after an I/O
+        state operation.
 
         The address is routed through the barrier together with an I/O state, so that the
         memory operation consuming the result is ordered after the producer of the I/O state.
