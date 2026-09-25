@@ -253,6 +253,35 @@ def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
     let hasVerifier = 1;
 }
 
+def JLM_MemoryHoistBarrier: JLM_Op<"memoryHoistBarrier"> {
+    let summary = "Memory hoist barrier operation";
+    let description = [{
+        Sequentializes a memory operation, such as a load, store or memory copy, after an I/O
+        state operation.
+
+        The address is routed through the barrier together with an I/O state, so that the
+        memory operation consuming the result is ordered after the producer of the I/O state.
+        `dereferenceableSize` is the number of bytes the address is known to be dereferenceable
+        over; 0 means unknown.
+
+        %address, %ioState = ...
+        %barrieredAddress = jlm.memoryHoistBarrier %address, %ioState
+            {dereferenceableSize = 4 : ui64} : !llvm.ptr, !rvsdg.ioState -> !llvm.ptr
+    }];
+
+    let arguments = (ins
+        LLVMPointerType:$address,
+        RVSDG_IOState:$inputIoState,
+        UI64Attr:$dereferenceableSize
+    );
+
+    let results = (outs
+        LLVMPointerType:$output
+    );
+
+    let hasVerifier = 1;
+}
+
 def JLM_FuncToPtr: JLM_Op<"funcToPtr"> {
     let summary = "Cast a function reference to a pointer";
     let description = [{
