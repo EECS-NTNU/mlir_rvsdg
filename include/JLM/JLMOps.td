@@ -127,13 +127,13 @@ def JLM_Free: JLM_Op<"free"> {
 
     let arguments = (ins
         LLVMPointerType:$input,
-        Variadic<RVSDG_MemState>:$inputMemStates,
         RVSDG_IOState:$inputIoState
+        Variadic<RVSDG_MemState>:$inputMemStates,
     );
 
     let results = (outs
-        Variadic<RVSDG_MemState>:$outputMemStates,
         RVSDG_IOState:$outputIoState
+        Variadic<RVSDG_MemState>:$outputMemStates,
     );
 }
 
