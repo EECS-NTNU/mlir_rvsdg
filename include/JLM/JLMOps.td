@@ -235,6 +235,26 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
     let hasVerifier = 1;
 }
 
+def JLM_ConstantArray: JLM_Op<"constantArray"> {
+    let summary = "Constant array operation";
+    let description = [{
+        Constant array operation.
+
+        An array value built from its element values, which are the operands. Unlike
+        `constantDataArray` the element values are not required to share a type, so this is
+        the operation that carries an aggregate array, e.g. an array of structs whose
+        elements are themselves aggregate values.
+    }];
+
+    let arguments = (ins
+        Variadic<AnyType>:$input
+    );
+
+    let results = (outs
+        LLVMArrayType:$output
+    );
+}
+
 def JLM_ConstantStruct: JLM_Op<"constantStruct"> {
     let summary = "Constant struct operation";
     let description = [{
