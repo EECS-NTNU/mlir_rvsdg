@@ -235,6 +235,21 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
     let hasVerifier = 1;
 }
 
+def JLM_ConstantStruct: JLM_Op<"constantStruct"> {
+    let summary = "Constant struct operation";
+    let description = [{
+        Constant struct operation.
+    }];
+
+    let arguments = (ins
+        Variadic<AnyType>:$input
+    );
+
+    let results = (outs
+        AnyType:$output
+    );
+}
+
 def JLM_IOBarrier: JLM_Op<"ioBarrier"> {
     let summary = "IO barrier operation";
     let description = [{
