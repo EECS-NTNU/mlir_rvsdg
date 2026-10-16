@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression-tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: "Configure and update LLVM apt source"
+        run: |
+          LLVM_SOURCE=/etc/apt/sources.list.d/jlm-llvm.list
+          if [[ ! -f "${LLVM_SOURCE}" ]]; then
+            wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc >/dev/null
+            echo "deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-18 main" | sudo tee "${LLVM_SOURCE}" >/dev/null
+          fi
+          sudo apt-get update \
+            -o Dir::Etc::sourcelist=/etc/apt/sources.list.d/jlm-llvm.list \
+            -o Dir::Etc::sourceparts=- \
+            -o APT::Get::List-Cleanup=0
+        shell: bash
+
+      - name: "Install LLVM and MLIR 18"
+        run: |
+          sudo apt-get install -y \
+            cmake ninja-build \
+            llvm-18-dev \
+            libmlir-18-dev mlir-18-tools \
+            clang-18
+          pip install "lit~=18.0"
+          pip show lit
+          llvm-config-18 --version
+
+      - name: "Configure"
+        run: |
+          prefix=$(llvm-config-18 --prefix)
+          cmake -G Ninja -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_DIR="$prefix/lib/cmake/llvm" \
+            -DMLIR_DIR="$prefix/lib/cmake/mlir" \
+            -DLLVM_EXTERNAL_LIT="$(command -v lit)"
+
+      - name: "Build"
+        run: cmake --build build
+
+      - name: "Run the dialect's regression tests"
+        run: ninja -C build test
