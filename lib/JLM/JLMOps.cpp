@@ -91,6 +91,28 @@ LogicalResult jlm::ConstantDataArray::verify() {
 }
 
 /**
+ * ConstantArray
+ */
+LogicalResult jlm::ConstantArray::verify() {
+  // Unlike constantDataArray the operands are allowed to differ in type: this is the operation
+  // that carries an aggregate array, so the only thing the result type pins down is how many
+  // elements there are, and the operands are the elements.
+  auto operands = this->getOperands().getTypes();
+  if (operands.empty())
+    return emitOpError("a constant array needs at least one element.");
+
+  auto arrayType = dyn_cast<LLVM::LLVMArrayType>(this->getOutput().getType());
+  if (!arrayType)
+    return emitOpError("result must be an LLVM array type.");
+
+  if (this->getNumOperands() != arrayType.getNumElements())
+    return emitOpError(
+        "the number of operands must match the element count of the result array.");
+
+  return LogicalResult::success();
+}
+
+/**
  * IOBarrier
  */
 LogicalResult jlm::IOBarrier::verify() {

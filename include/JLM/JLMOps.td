@@ -253,6 +253,8 @@ def JLM_ConstantArray: JLM_Op<"constantArray"> {
     let results = (outs
         LLVMArrayType:$output
     );
+
+    let hasVerifier = 1;
 }
 
 def JLM_ConstantStruct: JLM_Op<"constantStruct"> {
