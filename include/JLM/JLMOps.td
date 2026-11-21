@@ -221,7 +221,11 @@ def JLM_Undef: JLM_Op<"undef"> {
 def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
     let summary = "Constant data array operation";
     let description = [{
-        Constant data array operation.
+        An array value whose elements are all scalars of one type, e.g. the array
+        `[i32 3, i32 4]`. The elements are the operands, and the verifier requires them to
+        agree with each other and with the element type of the result array. This is the
+        counterpart of `constantArray`, which carries arrays whose elements are arbitrary
+        values rather than scalars of one type.
     }];
 
     let arguments = (ins
@@ -238,12 +242,14 @@ def JLM_ConstantDataArray: JLM_Op<"constantDataArray"> {
 def JLM_ConstantArray: JLM_Op<"constantArray"> {
     let summary = "Constant array operation";
     let description = [{
-        Constant array operation.
+        An array value built from its element values, which are the operands. This is the
+        counterpart of `constantDataArray`: the elements are arbitrary values — pointers to
+        globals, nested aggregates, or any other constant — rather than scalars of one type,
+        so this is the operation that carries an aggregate array, e.g. an array of structs
+        whose elements are themselves aggregate values.
 
-        An array value built from its element values, which are the operands. Unlike
-        `constantDataArray` the element values are not required to share a type, so this is
-        the operation that carries an aggregate array, e.g. an array of structs whose
-        elements are themselves aggregate values.
+        Every element still has the element type of the result array: an array has one
+        element type, and the verifier requires each operand to have it.
     }];
 
     let arguments = (ins

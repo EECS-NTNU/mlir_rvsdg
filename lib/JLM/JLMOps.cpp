@@ -76,16 +76,28 @@ LogicalResult jlm::Alloca::verify() {
  * ConstantDataArray
  */
 LogicalResult jlm::ConstantDataArray::verify() {
+  // The operands are the array's elements, all scalars of one type: they must agree with each
+  // other and with the element type of the result array, and there must be one per element.
+  // That the result is an array type at all is checked by the operation's ODS constraint.
+  auto operandTypes = this->getOperands().getTypes();
+  if (operandTypes.empty())
+    return emitOpError("a constant data array needs at least one element.");
 
-  auto operands = this->getOperands().getTypes();
-  if (!operands.empty()) {
-    auto firstType = operands.front();
-    for (auto operand : operands) {
-      if (operand != firstType) {
-        return emitOpError("All operands must have the same type.");
-      }
+  for (auto operandType : operandTypes) {
+    if (operandType != operandTypes.front()) {
+      return emitOpError("All operands must have the same type.");
     }
   }
+
+  auto arrayType = llvm::dyn_cast<LLVM::LLVMArrayType>(this->getOutput().getType());
+
+  if (operandTypes.front() != arrayType.getElementType())
+    return emitOpError(
+        "the operand type must match the element type of the result array.");
+
+  if (this->getNumOperands() != arrayType.getNumElements())
+    return emitOpError(
+        "the number of operands must match the element count of the result array.");
 
   return LogicalResult::success();
 }
@@ -94,20 +106,29 @@ LogicalResult jlm::ConstantDataArray::verify() {
  * ConstantArray
  */
 LogicalResult jlm::ConstantArray::verify() {
-  // Unlike constantDataArray the operands are allowed to differ in type: this is the operation
-  // that carries an aggregate array, so the only thing the result type pins down is how many
-  // elements there are, and the operands are the elements.
-  auto operands = this->getOperands().getTypes();
-  if (operands.empty())
-    return emitOpError("a constant array needs at least one element.");
+  // The operands are the array's elements: arbitrary values, unlike constantDataArray, but
+  // still all of the result array's element type — an array has one element type, and an
+  // operand that disagrees with it makes the op mean two different things. That the result
+  // is an array type at all is checked by the operation's ODS constraint.
+  auto arrayType = llvm::dyn_cast<LLVM::LLVMArrayType>(this->getOutput().getType());
 
-  auto arrayType = dyn_cast<LLVM::LLVMArrayType>(this->getOutput().getType());
-  if (!arrayType)
-    return emitOpError("result must be an LLVM array type.");
+  // An array with no elements is zeroinitializer, never a constant array: LLVM builds no
+  // such operation, and JLM's ConstantArrayOperation rejects a size of zero.
+  if (this->getNumOperands() == 0)
+    return emitOpError("a constant array needs at least one element.");
 
   if (this->getNumOperands() != arrayType.getNumElements())
     return emitOpError(
         "the number of operands must match the element count of the result array.");
+
+  auto operands = this->getOperands();
+  for (size_t i = 0; i < operands.size(); ++i) {
+    if (operands[i].getType() != arrayType.getElementType()) {
+      return emitOpError("element #")
+             << i << " has type " << operands[i].getType() << ", but the result array type "
+             << "declares " << arrayType.getElementType();
+    }
+  }
 
   return LogicalResult::success();
 }
