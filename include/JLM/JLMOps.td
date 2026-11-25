@@ -27,7 +27,7 @@ def JLM_Load: JLM_Op<"load", [AttrSizedOperandSegments, AttrSizedResultSegments]
 
     let arguments = (ins
         LLVMPointerType:$pointer,
-        UI32Attr:$alignment,
+        I64Attr:$alignment,
         BoolAttr:$isVolatile,
         Optional<RVSDG_IOState>:$inputIoState,
         Variadic<RVSDG_MemState>:$inputMemStates
@@ -60,7 +60,7 @@ def JLM_Store: JLM_Op<"store", [AttrSizedOperandSegments, AttrSizedResultSegment
     let arguments = (ins
         LLVMPointerType:$pointer,
         AnyType:$value,
-        UI32Attr:$alignment,
+        I64Attr:$alignment,
         BoolAttr:$isVolatile,
         Optional<RVSDG_IOState>:$inputIoState,
         Variadic<RVSDG_MemState>:$inputMemStates
@@ -83,7 +83,7 @@ def JLM_Alloca: JLM_Op<"alloca"> {
     let arguments = (ins
         TypeAttr:$valueType,
         AnySignlessInteger:$size,
-        UI32Attr:$alignment,
+        I64Attr:$alignment,
         Variadic<RVSDG_MemState>:$inputMemStates
     );
 
