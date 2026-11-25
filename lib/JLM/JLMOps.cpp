@@ -13,6 +13,19 @@
 using namespace mlir;
 using namespace jlm;
 
+/*
+ * Alignment is a hardware guarantee, so an impossible value is a bug rather than an unknown.
+ * LLVM's own global rejects anything that is not a positive power of two, and that is the rule
+ * every operation carrying an alignment follows.
+ */
+static LogicalResult verifyAlignment(Operation * op, int64_t alignment) {
+  if (alignment <= 0 || (alignment & (alignment - 1)) != 0) {
+    return op->emitOpError("has an alignment of ")
+        << alignment << ", which is not a positive power of two.";
+  }
+  return LogicalResult::success();
+}
+
 /**
  * Memory operators
  */
@@ -37,6 +50,9 @@ LogicalResult jlm::Load::verify() {
         "non-volatile load must not have an input or output I/O state (inputIoState/outputIoState)");
   }
 
+  if (failed(verifyAlignment(*this, this->getAlignment())))
+    return failure();
+
   return LogicalResult::success();
 }
 
@@ -60,16 +76,17 @@ LogicalResult jlm::Store::verify() {
         "non-volatile store must not have an input or output I/O state (inputIoState/outputIoState)");
   }
 
+  if (failed(verifyAlignment(*this, this->getAlignment())))
+    return failure();
+
   return LogicalResult::success();
 }
 
 /**
  * Alloca
  */
-// TODO: Either eliminate the function or provide useful verification
-//       Used to check pointer type but pointers have become opaque
 LogicalResult jlm::Alloca::verify() {
-  return LogicalResult::success();
+  return verifyAlignment(*this, this->getAlignment());
 }
 
 /**

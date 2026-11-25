@@ -414,14 +414,21 @@ def RVSDG_DeltaNode: RVSDG_StructuralNode<"deltaNode", [Pure]>{
         is a single pointer that points to the modelled variable. Region arguments
         are mapped one to one from the node inputs. The region result is the value
         of the modelled variable.
+
+        `alignment` is the guaranteed alignment of the storage. It is optional in the sense that a
+        global has one whether or not it is written down: a delta that omits it is a global whose
+        alignment the module did not record, which is a different statement from a delta that says
+        16. Import that cannot tell the two apart invents a value, so this is where the difference
+        has to be carried.
     }];
 
     let arguments = (ins
-        Variadic<AnyType>:$inputs, 
+        Variadic<AnyType>:$inputs,
         StrAttr:$name,
         StrAttr:$linkage,
         StrAttr:$section,
-        BoolAttr:$constant
+        BoolAttr:$constant,
+        OptionalAttr<I64Attr>:$alignment
     );
 
     let results = (outs

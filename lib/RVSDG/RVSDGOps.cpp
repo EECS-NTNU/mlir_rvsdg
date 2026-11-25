@@ -500,6 +500,20 @@ DeltaNode::verify()
     }
     ++typeIndex;
   }
+
+  // Alignment is a hardware guarantee, so an impossible value is a bug rather than an unknown.
+  // LLVM's own global rejects anything that is not a positive power of two, and that is the rule
+  // this follows.
+  if (auto alignment = this->getAlignmentAttr())
+  {
+    auto value = alignment.getInt();
+    if (value <= 0 || (value & (value - 1)) != 0)
+    {
+      return emitOpError("has an alignment of ")
+          << value << ", which is not a positive power of two.";
+    }
+  }
+
   return LogicalResult::success();
 }
 
