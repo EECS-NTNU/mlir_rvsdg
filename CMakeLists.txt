@@ -8,6 +8,15 @@ SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -lstdc++")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Registers the suite with CTest, so the tests run through the standard
+# `ctest` entry point rather than only through the project's own check target.
+enable_testing()
+
+# The `test` target that `ninja test` drives runs ctest without
+# --output-on-failure, which prints only the aggregate summary: the lit report
+# that names the failing .mlir file is written out and then suppressed.
+set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
+
 if(NOT DEFINED LLVM_DIR)
   set(LLVM_DIR "${CMAKE_CURRENT_SOURCE_DIR}/llvm/build/lib/cmake/llvm")
   message(STATUS "LLVM_DIR not explicitly defined. Attempting to use submodule at ${LLVM_DIR}")
@@ -54,6 +63,7 @@ if(MLIR_ENABLE_BINDINGS_PYTHON)
 endif()
 add_subdirectory(rvsdg-opt)
 add_subdirectory(lsp)
+add_subdirectory(tests)
 
 set(CPACK_PACKAGE_VENDOR "Halvor Bjørstad")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "RVSDG dialect for MLIR")
