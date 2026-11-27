@@ -362,9 +362,9 @@ def RVSDG_PhiNode: RVSDG_StructuralNode<"phiNode"> {
         RVSDG phi node. Models an environment with mutually recursive functions. Has a single region
         which can contain lambda and delta nodes. Inputs to this node capture context values that are
         needed by the contained nodes. Outputs are references to the contained mutually recursive functions.
-        The region arguments consist of the context values passed through the inputs, and references
-        to the enclosed lambda nodes. The region results map to the region arguments which are lambda
-        references, and to the outputs of the phi node.
+        The region arguments consist of references to the enclosed lambda nodes, followed by the
+        context values passed through the inputs. The region results map to the outputs of the
+        phi node.
     }];
 
     let arguments = (ins
@@ -390,12 +390,11 @@ def RVSDG_PhiResult: RVSDG_Op<"phiResult", [
 ]>{
     let summary = "Phi node results";
     let description = [{
-        Phi node results. Maps operands to the region arguments which are lambda
-        references, and to the outputs of the phi node.
+        Phi node results. Maps operands to the outputs of the phi node.
     }];
 
     let arguments = (ins
-        Variadic<RVSDG_LambdaRef>:$results
+        Variadic<AnyType>:$results
     );
 
     let assemblyFormat = "attr-dict custom<TypedParamList>($results, type($results))";

@@ -435,7 +435,7 @@ PhiNode::verify()
     if (this->getOperand(operandIndex).getType()
         != this->getRegion().getArgument(argIndex).getType())
     {
-      this->emitOpError(" has a type mismatch between operands and region arguments.")
+      return this->emitOpError(" has a type mismatch between operands and region arguments.")
           << "Argument #" << argIndex << " is of type "
           << this->getRegion().getArgument(argIndex).getType() << ", but operand #" << operandIndex
           << " is of type " << this->getOperand(operandIndex).getType();
@@ -461,6 +461,12 @@ PhiResult::verify()
   }
   auto resultTypes = this->getOperandTypes();
   const auto & outputs = parent.getOutputs();
+
+  if (resultTypes.size() != outputs.size())
+  {
+    return emitOpError(" has wrong number of operands. Expected ") << outputs.size() << ". Found "
+                                                                   << resultTypes.size();
+  }
 
   for (size_t i = 0; i < resultTypes.size(); ++i)
   {
