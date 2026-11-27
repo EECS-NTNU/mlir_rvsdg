@@ -100,13 +100,20 @@ def JLM_Call: JLM_Op<"call"> {
     let summary = "Call a function";
     let description = [{
         Call a function.
+
+        A call carries the same attribute surface as a lambda, but its dictionaries are indexed
+        the way LLVM numbers call arguments -- a lambda indexes by region argument, with the
+        context values taking slots in between.
     }];
 
     let arguments = (ins
         FunctionType:$callee,
         Variadic<AnyType>:$args,
         RVSDG_IOState:$inputIoState,
-        RVSDG_MemState:$inputMemState
+        RVSDG_MemState:$inputMemState,
+        OptionalAttr<StrAttr>:$cconv,
+        OptionalAttr<DictArrayAttr>:$arg_attrs,
+        OptionalAttr<DictArrayAttr>:$res_attrs
     );
 
     let results = (outs

@@ -141,13 +141,24 @@ def RVSDG_LambdaNode: RVSDG_StructuralNode<"lambdaNode", [DeclareOpInterfaceMeth
 
     let summary = "RVSDG lambda node. Models functions and methods.";
     let description = [{
-        RVSG lambda node. Models a function or method definition. Inputs to this node are context
+        RVSDG lambda node. Models a function or method definition. Inputs to this node are context
         values needed at call-time. The output from this node is a reference to the defined function.
         The region of this node is the body of the function. Region arguments are function parameters
         followed by context values. Region results are the return values of the function.
+
+        A lambda carries the attribute surface of a function declaration: `sym_name`, `linkage`,
+        `cconv` (in the LLVM vocabulary, e.g. "c" or "fast"), and the per-argument and per-result
+        dictionaries `arg_attrs` and `res_attrs`. `arg_attrs` is indexed by region argument --
+        parameters first, then context values, which carry nothing. Absence means the default, not
+        the unknown: no `cconv` is the default convention, no `arg_attrs` means no attributes.
     }];
 
     let arguments = (ins
+        OptionalAttr<StrAttr>:$sym_name,
+        OptionalAttr<StrAttr>:$linkage,
+        OptionalAttr<StrAttr>:$cconv,
+        OptionalAttr<DictArrayAttr>:$arg_attrs,
+        OptionalAttr<DictArrayAttr>:$res_attrs,
         Variadic<AnyType>: $contextValues
     );
 
